@@ -4,6 +4,7 @@
 package net.certifi.audittablegen;
 
 import java.sql.*;
+import java.util.Properties;
 import javax.naming.*;
 import javax.sql.*;
 import org.apache.commons.cli.CommandLine;
@@ -17,16 +18,27 @@ import org.postgresql.Driver;
  */
 final class GetConnection {
  
-    static Connection ConnectionFromOptions(CommandLine cmd) {
+    static Connection ConnectionFromOptions(Properties prop) {
 
-        String connectionURL = "jdbc:postgresql://localhost:5432/" + cmd.getOptionValue("Database");
-        String url = "jdbc:postgresql://localhost:5432/testSandbox?user=postgres&password=secret&ssl=true";
-        Connection conn = null;        
+        String connectionURL;
+        
+        if (prop.containsKey("url")){
+            connectionURL = prop.getProperty("url");
+        }
+        else {
+            connectionURL = "jdbc:" + prop.getProperty("driver") + "://" + prop.getProperty("Server");
+            connectionURL.concat(":" + prop.getProperty("port","5432")); 
+            connectionURL.concat("/" + prop.getProperty("Database"));
+        }
+        // = "jDbc:postgresql://localhost:5432/" + prop.getProperty("Database");
+        System.out.println("url = " + connectionURL);
+        Connection conn = null;
+        //prop.setProperty("ssl", "true");
 
         try {
             Class.forName("org.postgresql.Driver");
-            //conn = DriverManager.getConnection(connectionURL, cmd.getOptionValue("user"), cmd.getOptionValue("password"));
-            conn = DriverManager.getConnection(connectionURL, "testuser","testuserpw");
+            conn = DriverManager.getConnection(connectionURL, prop);
+            //conn = DriverManager.getConnection(connectionURL, "testuser","testuserpw");
         } catch (ClassNotFoundException ex) {
             ex.printStackTrace();
             System.exit(1);
