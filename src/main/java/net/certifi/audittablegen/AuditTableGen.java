@@ -7,11 +7,7 @@ import java.sql.*;
 import java.util.*;
 import javax.sql.*;
 import org.apache.commons.cli.*;
-import org.apache.commons.dbcp.BasicDataSource;
-import org.hsqldb.jdbc.JDBCDataSource;
-import org.postgresql.jdbc4.*;
-import org.postgresql.Driver;
-
+//import org.apache.commons.dbcp.BasicDataSource;
 
 /**
  * Audit Table Gen Interrogate the target database and auto-generate audit
@@ -52,10 +48,17 @@ public class AuditTableGen {
             Logger.getLogger(AuditTableGen.class.getName()).log(Level.SEVERE, null, e);
         }
 
-        if (false) {
+        if (dmd.getDriverName().toLowerCase().contains("postgresql")) {
+            dmr = new PostgresqlDMR (dataSource);
             //known dataSource with specific implementation requirements
             //ie PostgrresDMR, HsqldbDMR...            
-        } else {
+        }
+        if (dmd.getDriverName().toLowerCase().contains("hsqldb")) {
+            dmr = new HsqldbDMR (dataSource);
+            //known dataSource with specific implementation requirements
+            //ie PostgrresDMR, HsqldbDMR...            
+        }
+        else {
             //generic implementation
             dmr = new GenericDMR(dataSource);
         }
@@ -98,11 +101,11 @@ public class AuditTableGen {
         options.addOption("h", "help", false, "display this message");
 //        options.addOption("d", "Database", true, "Name of the database to connect to");
 //        options.addOption("s", "Server", true, "Name of the Server to connect to");
-        options.addOption("driver", true, "jdbc driver name (hsqldb, postgres, or full class name on classpath)");
-        options.addOption("u", "user", true, "DB server login username");
+        options.addOption("driver", true, "specifiy jdbc driver. Only used if can't resolve from url");
+        options.addOption("u", "username", true, "DB server login username");
         options.addOption("p", "password", true, "DB server login password");
         options.addOption("f", "filename", true, "name of file to store the script");
-        options.addOption("url", true, "full url to DB.  Overrides -d, -s, --driver");
+        options.addOption("url", true, "full url to DB.  Overrides -d, -s");
         CommandLineParser parser = new GnuParser();
         CommandLine cmd;
         AuditTableGen atg;
@@ -164,48 +167,74 @@ public class AuditTableGen {
 
         Boolean isValid = true;
         Properties prop = new Properties();
+        String driver = "";
+        String subSchema = "";
 
+        //set url property
         if (cmd.hasOption("url")) {
             String url = cmd.getOptionValue("url");
-            String subschema_uri = url.substring(5);
+            String subschema_uri = url.substring(5); //strip jdbc:
 
+            //rudimentary url validation
             URI uri = URI.create(url);
             if (!uri.getScheme().equalsIgnoreCase("jdbc")) {
                 System.out.println("Invalid url: '" + url + "'");
                 isValid = false;
             } else {
                 uri = URI.create(subschema_uri);
-                prop.setProperty("driver", uri.getScheme());
-                prop.setProperty("url", url);
+                subSchema = uri.getScheme(); //driver reference hopefully
             }
-        } else {
-            //not going to worry about parsing driver,db,server for now
-            //just require a url, or connect the in mem database
-//            List<String> argList = Arrays.asList("driver","Database","Server");           
-//            for ( String arg : argList ){
-//                if (cmd.hasOption(arg)){
-//                    prop.setProperty(arg, cmd.getOptionValue(arg));
-//                }
-//                else {
-//                    System.out.println("Missing parameter: " + arg);
-//                    isValid = false;
-//                }
-//            }            
+            
+            prop.setProperty("url", url);
         }
-
-        //more required params (for now)
+        
+        //set driver property
+        String cmdArgDriver = cmd.getOptionValue("driver", "");
+        if (subSchema.equalsIgnoreCase("postgresql")) {
+            prop.setProperty("driver", "org.postgresql.Driver");
+        }
+        else if (subSchema.equalsIgnoreCase("hsqldb")) {
+            prop.setProperty("driver", "org.hsqldb.jdbcDriver");
+        }
+        else if (cmdArgDriver.isEmpty()) {
+            //best guess - this will almost certainly fail...
+            prop.setProperty("driver", subSchema);
+        }
+        else {
+            //unrecognized driver passed on command arg
+            //will use it if it resolves on the class-path
+            prop.setProperty("driver",cmd.getOptionValue("driver", ""));
+        }
+        
+        //not going to worry about parsing db,server for now
+        //just require a url, or connect to the in mem database
+//      List<String> argList = Arrays.asList("driver","Database","Server");           
+//      for ( String arg : argList ){
+//           if (cmd.hasOption(arg)){
+//                prop.setProperty(arg, cmd.getOptionValue(arg));
+//            }
+//            else {
+//                System.out.println("Missing parameter: " + arg);
+//                isValid = false;
+//            }
+//        }            
+//      }
+        
+        //more params (for now)
+        //do not require - these can also be passed on the url
         if (prop.containsKey("url")) {
-            List<String> argList = Arrays.asList("user", "password");
+            List<String> argList = Arrays.asList("username", "password");
             for (String arg : argList) {
                 if (cmd.hasOption(arg)) {
                     prop.setProperty(arg, cmd.getOptionValue(arg));
-                } else {
-                    System.out.println("Missing parameter: " + arg);
-                    isValid = false;
+//                } else {
+//                    System.out.println("Missing parameter: " + arg);
+//                    isValid = false;
                 }
             }
         }
-        //optional params
+        
+        //optional params - this is for the output script
         if (cmd.hasOption("filename")) {
             prop.setProperty("filename", cmd.getOptionValue("filename"));
         }
@@ -220,39 +249,24 @@ public class AuditTableGen {
 
         DataSource ds;
         String driver;
-        String validation = "select 1"; //postgres is the defualt
 
         if (props.containsKey("url")) {
             driver = props.getProperty("driver", "");
-            if (driver.equals("hsqldb")) {
-                props.setProperty("driver", "org.hsqldb.jdbcDriver");
-            } else if (driver.equals("postgresql")) {
-                props.setProperty("driver", "org.postgresql.Driver");
-            } else {
-                //nothing.  Hope driver is a valid driver class.
+            if (driver.toLowerCase().contains("hsqldb")) {
+                ds = HsqldbDMR.GetRunTimeDataSource(props);
+            }
+            else if (driver.toLowerCase().contains("postgresql")){
+                ds = PostgresqlDMR.GetRunTimeDataSource(props);
+            }
+            else {
+                //take a shot at it with user supplied driver & url
+                ds = GenericDMR.GetRunTimeDataSource(props);
             }
         } else {
-            //in memory hsqldb
-            props.setProperty("user", "sa");
-            props.setProperty("password", "");
-            props.setProperty("url", "jdbc:hsqldb:mem:aname");
-            props.setProperty("driver", "org.hsqldb.jdbcDriver");
+            //no url provided
+            //in memory hsqldb - testing only
+            ds = HsqldbDMR.GetRunTimeDataSource();
         }
-        
-        driver = props.getProperty("driver");
-        BasicDataSource dataSource = new BasicDataSource();
-        dataSource.setDriverClassName(props.getProperty("driver"));
-        dataSource.setUsername(props.getProperty("user"));
-        dataSource.setPassword(props.getProperty("password"));
-        dataSource.setUrl(props.getProperty("url"));
-        dataSource.setMaxActive(10);
-        dataSource.setMaxIdle(5);
-        dataSource.setInitialSize(5);
-        if (driver.contains("hsqldb")){
-            validation = "SELECT 1 FROM INFORMATION_SCHEMA.SYSTEM_USERS";
-        }
-        dataSource.setValidationQuery(validation);
-        ds = dataSource;
 
         return ds;
     }

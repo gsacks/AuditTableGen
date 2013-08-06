@@ -13,44 +13,23 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.sql.DataSource;
 import org.apache.commons.dbcp.BasicDataSource;
-//import org.hsqldb.Statement;
-import org.hsqldb.jdbc.JDBCDataSource;
+import org.postgresql.Driver;
 
 /**
  *
  * @author Glenn Sacks
  */
-public class HsqldbDMR extends GenericDMR {
+public class PostgresqlDMR extends GenericDMR {
     
 
-    HsqldbDMR (DataSource ds) throws SQLException{
+    PostgresqlDMR (DataSource ds) throws SQLException{
         
         super(ds);
         
     }
         
     /**
-     * Generate an in memory hsqldb datasource for testing
-     * @return BasicDataSource as DataSource
-     */
-    static DataSource GetRunTimeDataSource(){
-        
-        BasicDataSource dataSource = new BasicDataSource();
-
-        dataSource.setDriverClassName("org.hsqldb.jdbcDriver");
-        dataSource.setUsername("sa");
-        dataSource.setPassword("");
-        dataSource.setUrl("jdbc:hsqldb:mem:aname");
-        dataSource.setMaxActive(10);
-        dataSource.setMaxIdle(5);
-        dataSource.setInitialSize(5);
-        dataSource.setValidationQuery("SELECT 1 FROM INFORMATION_SCHEMA.SYSTEM_USERS");
-        
-        return dataSource;
-        
-    }
-    /**
-     * Generate a Hsqldb DataSource from Properties 
+     * Generate a Postgresql DataSource from Properties 
      * @param props
      * @return BasicDataSource as DataSource
      */
@@ -58,14 +37,14 @@ public class HsqldbDMR extends GenericDMR {
         
         BasicDataSource dataSource = new BasicDataSource();
         
-        dataSource.setDriverClassName("org.hsqldb.jdbcDriver");
+        dataSource.setDriverClassName("org.postgresql.Driver");
         dataSource.setUsername(props.getProperty("username"));
         dataSource.setPassword(props.getProperty("password"));
         dataSource.setUrl(props.getProperty("url"));
         dataSource.setMaxActive(10);
         dataSource.setMaxIdle(5);
         dataSource.setInitialSize(5);
-        dataSource.setValidationQuery("SELECT 1 FROM INFORMATION_SCHEMA.SYSTEM_USERS");
+        dataSource.setValidationQuery("SELECT 1");
         
         return dataSource;
     }
@@ -106,7 +85,7 @@ public class HsqldbDMR extends GenericDMR {
             conn.close();
             
         } catch (SQLException ex) {
-            Logger.getLogger(HsqldbDMR.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(PostgresqlDMR.class.getName()).log(Level.SEVERE, null, ex);
         }
         
         
@@ -127,7 +106,7 @@ public class HsqldbDMR extends GenericDMR {
                 System.out.println("Id:" + id + "  Data:" + data);
             }
         } catch (SQLException ex) {
-            Logger.getLogger(HsqldbDMR.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(PostgresqlDMR.class.getName()).log(Level.SEVERE, null, ex);
         }
         
         
@@ -146,7 +125,7 @@ public class HsqldbDMR extends GenericDMR {
                 System.out.println ("DataSource Stats not available");
             }
         } catch (SQLException ex) {
-            Logger.getLogger(HsqldbDMR.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(PostgresqlDMR.class.getName()).log(Level.SEVERE, null, ex);
         }
         
     }
@@ -171,7 +150,7 @@ public class HsqldbDMR extends GenericDMR {
             }
 
         } catch (SQLException ex) {
-            Logger.getLogger(HsqldbDMR.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(PostgresqlDMR.class.getName()).log(Level.SEVERE, null, ex);
         }
 
         return false;

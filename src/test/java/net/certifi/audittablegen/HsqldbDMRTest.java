@@ -4,6 +4,9 @@
  */
 package net.certifi.audittablegen;
 
+import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.sql.DataSource;
 import org.apache.commons.dbcp.BasicDataSource;
 import org.junit.*;
@@ -42,7 +45,11 @@ public class HsqldbDMRTest {
         dataSource.setMaxIdle(5);
         dataSource.setInitialSize(5);
         dataSource.setValidationQuery("SELECT 1 FROM INFORMATION_SCHEMA.SYSTEM_USERS");
-        hsqldbDMR = new HsqldbDMR(dataSource);
+        try {
+            hsqldbDMR = new HsqldbDMR(dataSource);
+        } catch (SQLException ex) {
+            Logger.getLogger(HsqldbDMRTest.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
     
     @After
@@ -58,7 +65,11 @@ public class HsqldbDMRTest {
         System.out.println("CreateTestTable");
         //doThrow(new RuntimeException()).when(dataSource).getConnection();
         HsqldbDMR instance = hsqldbDMR ;
-        instance.CreateTestTable();
+        try {
+            instance.CreateTestTable();
+        } catch (SQLException ex) {
+            fail("CreateTestTable threw exception");
+        }
     }
 
     /**
