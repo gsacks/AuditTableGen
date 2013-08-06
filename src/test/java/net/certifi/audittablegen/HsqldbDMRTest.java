@@ -17,7 +17,7 @@ import static org.mockito.Mockito.*;
  */
 public class HsqldbDMRTest {
     
-    HsqldbDMR hsqldbDMR = new HsqldbDMR();
+    HsqldbDMR hsqldbDMR;
     //BasicDataSource dataSource = mock(BasicDataSource.class);
     BasicDataSource dataSource = new BasicDataSource();
     
@@ -42,7 +42,7 @@ public class HsqldbDMRTest {
         dataSource.setMaxIdle(5);
         dataSource.setInitialSize(5);
         dataSource.setValidationQuery("SELECT 1 FROM INFORMATION_SCHEMA.SYSTEM_USERS");
-        hsqldbDMR.dataSource = dataSource;
+        hsqldbDMR = new HsqldbDMR(dataSource);
     }
     
     @After
@@ -87,12 +87,6 @@ public class HsqldbDMRTest {
      * Test of shutdownDataSource method, of class HsqldbDMR.
      */
 //    @Test
-    public void testShutdownDataSource() throws Exception {
-        //doThrow(new RuntimeException()).when(dataSource).close();
-        System.out.println("shutdownDataSource");
-        //DataSource ds = null;
-        hsqldbDMR.shutdownDataSource();
-    }
     
        /**
      * Test methods in order, of class HsqldbDMR.
@@ -102,6 +96,5 @@ public class HsqldbDMRTest {
         testCreateTestTable();
         testSelectTestRow();
         testPrintDataSourceStats();
-        testShutdownDataSource();
     }
 }

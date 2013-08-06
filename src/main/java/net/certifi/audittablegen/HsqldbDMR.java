@@ -8,6 +8,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.sql.DataSource;
@@ -19,42 +20,22 @@ import org.hsqldb.jdbc.JDBCDataSource;
  *
  * @author Glenn Sacks
  */
-public class HsqldbDMR implements DataSourceDMR {
+public class HsqldbDMR extends GenericDMR {
     
-    BasicDataSource dataSource;
-    private Boolean _keepOpen;
-    private Connection _conn;
 
-    public Boolean getKeepOpen() {
-        return _keepOpen;
+    HsqldbDMR (DataSource ds) throws SQLException{
+        
+        super(ds);
+        
     }
-
+        
     /**
-     * For this basic non-pooled DataSource, define whether or not
-     * a single connection is held open for the duration of the object
-     * or if it opens a new connection for each method call.
-     * 
-     * @param _keepOpen 
+     * Generate an in memory hsqldb datasource for testing
+     * @return BasicDataSource as DataSource
      */
-    public void setKeepOpen(Boolean _keepOpen) {
-        this._keepOpen = _keepOpen;
-    }
-    
-    private Connection GetConnection(){
-     
-        if (_keepOpen){
-            
-        }
-        else {
-            
-        }
+    static DataSource GetRunTimeDataSource(){
         
-        return _conn;
-        
-    }
-    HsqldbDMR (){
-        
-        dataSource = new BasicDataSource();
+        BasicDataSource dataSource = new BasicDataSource();
 
         dataSource.setDriverClassName("org.hsqldb.jdbcDriver");
         dataSource.setUsername("sa");
@@ -65,13 +46,33 @@ public class HsqldbDMR implements DataSourceDMR {
         dataSource.setInitialSize(5);
         dataSource.setValidationQuery("SELECT 1 FROM INFORMATION_SCHEMA.SYSTEM_USERS");
         
-    }
-    
-            
-            
-    void CreateTestTable (){
+        return dataSource;
         
-        System.out.println("dataSourse is NOT null:" + dataSource.getUrl());
+    }
+    /**
+     * Generate a Hsqldb DataSource from Properties 
+     * @param url
+     * @return BasicDataSource as DataSource
+     */
+    static DataSource GetRunTimeDataSource(Properties props){
+        
+        BasicDataSource dataSource = new BasicDataSource();
+        
+        dataSource.setDriverClassName("org.hsqldb.jdbcDriver");
+        dataSource.setUsername(props.getProperty("username"));
+        dataSource.setPassword(props.getProperty("password"));
+        dataSource.setUrl(props.getProperty("url"));
+        dataSource.setMaxActive(10);
+        dataSource.setMaxIdle(5);
+        dataSource.setInitialSize(5);
+        dataSource.setValidationQuery("SELECT 1 FROM INFORMATION_SCHEMA.SYSTEM_USERS");
+        
+        return dataSource;
+    }
+            
+    void CreateTestTable () throws SQLException{
+        
+        System.out.println("dataSourse is NOT null:" + dmd.getURL());
         
         String SQL = "Create table test1 (test1Id integer not null identity, test1Data integer  )";
         try {
@@ -132,25 +133,24 @@ public class HsqldbDMR implements DataSourceDMR {
         
         
     }
-    public void printDataSourceStats() {
-        System.out.println("NumActive: " + dataSource.getNumActive());
-        System.out.println("NumIdle: " + dataSource.getNumIdle());
-    }
-
-    public void shutdownDataSource() throws SQLException {
-        //BasicDataSource bds = (BasicDataSource) ds;
-        dataSource.close();
-       
-    }
-
     
-    public void SetKeepOpen (Boolean value){
-        
-        _keepOpen = value;
-                    
-                    
+    public void printDataSourceStats() {
+        try {
+            if (dataSource.isWrapperFor(BasicDataSource.class)){
+                BasicDataSource bds = dataSource.unwrap(BasicDataSource.class);
+                System.out.println("NumActive: " + bds.getNumActive());
+                System.out.println("NumIdle: " + bds.getNumIdle());
+                
+            }
+            else {
+                System.out.println ("DataSource Stats not available");
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(HsqldbDMR.class.getName()).log(Level.SEVERE, null, ex);
+        }
         
     }
+    
     /**
      * When KeepOpen is true, ensures that the connection is working.
      * When KeepOpen is false, attempts a temporary connection to 
@@ -160,29 +160,20 @@ public class HsqldbDMR implements DataSourceDMR {
      *         false if a connection cannot be established
      */
     public boolean EnsureConnection() {
-        
+
         Connection conn;
-        
+
         try {
-            if (_keepOpen){
-                if (_conn == null ){
-                    _conn = dataSource.getConnection();
-                }
-                if ( _conn != null && _conn.isValid(15)){
-                    return true;
-                }
+            conn = dataSource.getConnection();
+            if (conn != null && conn.isValid(15)) {
+                conn.close();
+                return true;
             }
-            else {
-                conn = dataSource.getConnection();
-                if ( conn != null && conn.isValid(15)){
-                    conn.close();
-                    return true;
-                }
-            }
+
         } catch (SQLException ex) {
             Logger.getLogger(HsqldbDMR.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+
         return false;
     }
    
