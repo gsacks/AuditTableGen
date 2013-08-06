@@ -1,21 +1,22 @@
 package net.certifi.audittablegen;
 
+import com.google.common.base.Throwables;
 import java.net.URI;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.sql.*;
 import java.util.*;
 import javax.sql.*;
 import org.apache.commons.cli.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 //import org.apache.commons.dbcp.BasicDataSource;
 
 /**
- * Audit Table Gen Interrogate the target database and auto-generate audit
- * tables and triggers
+ * Audit Table Gen Interrogate the target database and auto-generate audit tables and triggers
  *
  */
 public class AuditTableGen {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuditTableGen.class);
     Properties connectionProperties;
     DatabaseMetaData dmd;
     DataSourceDMR dmr;
@@ -24,8 +25,7 @@ public class AuditTableGen {
     String schema;
 
     /**
-     * Constructor, takes a dataSource and sets up some basic instance
-     * variables.
+     * Constructor, takes a dataSource and sets up some basic instance variables.
      *
      * @param dataSource
      * @throws SQLException
@@ -43,22 +43,21 @@ public class AuditTableGen {
 
         try {
             catalog = connection.getCatalog();
-            //schema = connection.getSchema();
+            schema = connection.getSchema();
         } catch (SQLException e) {
-            Logger.getLogger(AuditTableGen.class.getName()).log(Level.SEVERE, null, e);
+            logger.error("Error getting catalog/schema", e);
         }
 
         if (dmd.getDriverName().toLowerCase().contains("postgresql")) {
-            dmr = new PostgresqlDMR (dataSource);
+            dmr = new PostgresqlDMR(dataSource);
             //known dataSource with specific implementation requirements
             //ie PostgrresDMR, HsqldbDMR...            
         }
         if (dmd.getDriverName().toLowerCase().contains("hsqldb")) {
-            dmr = new HsqldbDMR (dataSource);
+            dmr = new HsqldbDMR(dataSource);
             //known dataSource with specific implementation requirements
             //ie PostgrresDMR, HsqldbDMR...            
-        }
-        else {
+        } else {
             //generic implementation
             dmr = new GenericDMR(dataSource);
         }
@@ -68,15 +67,18 @@ public class AuditTableGen {
     String GetDataSourceInfo() throws SQLException {
 
         StringBuilder s = new StringBuilder();
-        s.append("Driver Name: " + dmd.getDriverName() + System.lineSeparator());
-        s.append("Driver Version: " + dmd.getDriverVersion() + System.lineSeparator());
-        s.append("CatalogSeperator: " + dmd.getCatalogSeparator() + System.lineSeparator());
-        s.append("CatalogTerm: " + dmd.getCatalogTerm() + System.lineSeparator());
-        s.append("SchemaTerm: " + dmd.getSchemaTerm() + System.lineSeparator());
-        s.append("Catalogs: ");
+
+        s.append("Driver Name: ").append(dmd.getDriverName())
+                .append("Driver Version: ").append(dmd.getDriverVersion()).append(System.lineSeparator())
+                .append("CatalogSeperator: ").append(dmd.getCatalogSeparator()).append(System.lineSeparator())
+                .append("CatalogTerm: ").append(dmd.getCatalogTerm()).append(System.lineSeparator())
+                .append("SchemaTerm: ").append(dmd.getSchemaTerm()).append(System.lineSeparator())
+                .append("Catalogs: ");
+
         ResultSet rs = dmd.getCatalogs();
         while (rs.next()) {
-            s.append(rs.getString("TABLE_CAT") + ",");
+            s.append(rs.getString("TABLE_CAT")).append(",");
+            logger.debug("Catalog: {}", rs.getString("TABLE_CAT"));
         }
         rs.close();
         s.append(System.lineSeparator());
@@ -84,12 +86,13 @@ public class AuditTableGen {
         s.append("Schemas: ");
         rs = dmd.getSchemas();
         while (rs.next()) {
-            s.append("{catalog}:" + rs.getString("TABLE_CATALOG") + " {schema}:" + rs.getString("TABLE_SCHEM") + ",");
+            logger.debug("Schema: {}", rs.getString("TABLE_SCHEM"));
+            s.append("{catalog}:").append(rs.getString("TABLE_CATALOG")).append(" {schema}:").append(rs.getString("TABLE_SCHEM")).append(",");
         }
         rs.close();
-        s.append(System.lineSeparator());
-        s.append("Target Catalog: " + catalog + System.lineSeparator());
-        s.append("Target Schema: " + schema + System.lineSeparator());
+        s.append(System.lineSeparator())
+                .append("Target Catalog: ").append(catalog).append(System.lineSeparator())
+                .append("Target Schema: ").append(schema).append(System.lineSeparator());
 
         return s.toString();
 
@@ -127,25 +130,27 @@ public class AuditTableGen {
             }
 
         } catch (ParseException ex) {
-            Logger.getLogger(AuditTableGen.class.getName()).log(Level.SEVERE, null, ex);
-            System.exit(1);
-            return; //return here just to make the compiler shut-up
+            logger.error("Error", ex);
+            throw Throwables.propagate(ex);
+//            System.exit(1);
+//            return; //return here just to make the compiler shut-up
         }
 
         try {
             ds = GetRunTimeDataSource(prop);
             atg = new AuditTableGen(ds);
-            System.out.print(atg.GetDataSourceInfo());
+            logger.info(atg.GetDataSourceInfo());
 
             //DataSourceDMR dsDMR = GetDataSourceDMR (cmd);
 //            Connection conn = GetConnection.ConnectionFromOptions(prop);
 //            TestConnection.GetData(conn);
 //            conn.close(); 
         } catch (SQLException ex) {
-            Logger.getLogger(AuditTableGen.class.getName()).log(Level.SEVERE, null, ex);
+           logger.error("Error", ex);
+           throw Throwables.propagate(ex);
         }
 
-        System.out.println("Done.");
+        logger.info("Done.");
     }
 
     static void usage(Options options) {
@@ -156,9 +161,8 @@ public class AuditTableGen {
     }
 
     /**
-     * Convert the command arguments to properties must contain either a
-     * decipherable jdbc url or database and server params, plus a username and
-     * password.
+     * Convert the command arguments to properties must contain either a decipherable jdbc url or database and server
+     * params, plus a username and password.
      *
      * @param cmd
      * @return
@@ -178,34 +182,31 @@ public class AuditTableGen {
             //rudimentary url validation
             URI uri = URI.create(url);
             if (!uri.getScheme().equalsIgnoreCase("jdbc")) {
-                System.out.println("Invalid url: '" + url + "'");
+                logger.warn("Invalid url: '{}'", url);
                 isValid = false;
             } else {
                 uri = URI.create(subschema_uri);
                 subSchema = uri.getScheme(); //driver reference hopefully
             }
-            
+
             prop.setProperty("url", url);
         }
-        
+
         //set driver property
         String cmdArgDriver = cmd.getOptionValue("driver", "");
         if (subSchema.equalsIgnoreCase("postgresql")) {
             prop.setProperty("driver", "org.postgresql.Driver");
-        }
-        else if (subSchema.equalsIgnoreCase("hsqldb")) {
+        } else if (subSchema.equalsIgnoreCase("hsqldb")) {
             prop.setProperty("driver", "org.hsqldb.jdbcDriver");
-        }
-        else if (cmdArgDriver.isEmpty()) {
+        } else if (cmdArgDriver.isEmpty()) {
             //best guess - this will almost certainly fail...
             prop.setProperty("driver", subSchema);
-        }
-        else {
+        } else {
             //unrecognized driver passed on command arg
             //will use it if it resolves on the class-path
-            prop.setProperty("driver",cmd.getOptionValue("driver", ""));
+            prop.setProperty("driver", cmd.getOptionValue("driver", ""));
         }
-        
+
         //not going to worry about parsing db,server for now
         //just require a url, or connect to the in mem database
 //      List<String> argList = Arrays.asList("driver","Database","Server");           
@@ -214,12 +215,12 @@ public class AuditTableGen {
 //                prop.setProperty(arg, cmd.getOptionValue(arg));
 //            }
 //            else {
-//                System.out.println("Missing parameter: " + arg);
+//                logger.warn("Missing parameter: {}", arg);
 //                isValid = false;
 //            }
 //        }            
 //      }
-        
+
         //more params (for now)
         //do not require - these can also be passed on the url
         if (prop.containsKey("url")) {
@@ -228,12 +229,12 @@ public class AuditTableGen {
                 if (cmd.hasOption(arg)) {
                     prop.setProperty(arg, cmd.getOptionValue(arg));
 //                } else {
-//                    System.out.println("Missing parameter: " + arg);
+//                    logger.warn("Missing parameter: {}", arg);
 //                    isValid = false;
                 }
             }
         }
-        
+
         //optional params - this is for the output script
         if (cmd.hasOption("filename")) {
             prop.setProperty("filename", cmd.getOptionValue("filename"));
@@ -254,11 +255,9 @@ public class AuditTableGen {
             driver = props.getProperty("driver", "");
             if (driver.toLowerCase().contains("hsqldb")) {
                 ds = HsqldbDMR.GetRunTimeDataSource(props);
-            }
-            else if (driver.toLowerCase().contains("postgresql")){
+            } else if (driver.toLowerCase().contains("postgresql")) {
                 ds = PostgresqlDMR.GetRunTimeDataSource(props);
-            }
-            else {
+            } else {
                 //take a shot at it with user supplied driver & url
                 ds = GenericDMR.GetRunTimeDataSource(props);
             }
