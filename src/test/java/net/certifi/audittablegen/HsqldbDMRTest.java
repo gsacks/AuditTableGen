@@ -11,14 +11,17 @@ import javax.sql.DataSource;
 import org.apache.commons.dbcp.BasicDataSource;
 import org.junit.*;
 import static org.junit.Assert.*;
+import static org.fest.assertions.Assertions.*;
 import org.junit.Before;
 import org.junit.Test;
 import static org.mockito.Mockito.*;
+import org.slf4j.LoggerFactory;
 /**
  *
  * @author Glenn Sacks
  */
 public class HsqldbDMRTest {
+    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(HsqldbDMRTest.class);
     
     HsqldbDMR hsqldbDMR;
     //BasicDataSource dataSource = mock(BasicDataSource.class);
@@ -107,5 +110,21 @@ public class HsqldbDMRTest {
         testCreateTestTable();
         testSelectTestRow();
         testPrintDataSourceStats();
+    }
+
+    @Test
+    public void testGetRunTimeDataSource_0args() throws SQLException {
+        logger.error("****************************************************");
+        DataSource ds = HsqldbDMR.GetRunTimeDataSource();
+        assertThat(ds.getConnection().getSchema()).isEqualTo("PUBLIC");
+        logger.trace("Got connection to schema: {}", ds.getConnection().getSchema());
+    }
+
+    @Test
+    public void testGetRunTimeDataSource_Properties() {
+    }
+
+    @Test
+    public void testEnsureConnection() {
     }
 }

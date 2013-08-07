@@ -4,60 +4,63 @@
  */
 package net.certifi.audittablegen;
 
+import ch.qos.logback.classic.Level;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.sql.DataSource;
 import org.apache.commons.dbcp.BasicDataSource;
 //import org.hsqldb.Statement;
 import org.hsqldb.jdbc.JDBCDataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  * @author Glenn Sacks
  */
 public class HsqldbDMR extends GenericDMR {
+    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(HsqldbDMR.class);
     
+    HsqldbDMR(DataSource ds) throws SQLException {
 
-    HsqldbDMR (DataSource ds) throws SQLException{
-        
         super(ds);
-        
+
     }
-        
+
     /**
      * Generate an in memory hsqldb datasource for testing
+     *
      * @return BasicDataSource as DataSource
      */
-    static DataSource GetRunTimeDataSource(){
-        
-        BasicDataSource dataSource = new BasicDataSource();
-
-        dataSource.setDriverClassName("org.hsqldb.jdbcDriver");
-        dataSource.setUsername("sa");
+    static DataSource GetRunTimeDataSource() {
+        //        BasicDataSource dataSource = new BasicDataSource();
+        JDBCDataSource dataSource = new JDBCDataSource();
+//        dataSource.setDriverClassName("org.hsqldb.jdbcDriver");
+//        dataSource.setUsername("sa");
         dataSource.setPassword("");
         dataSource.setUrl("jdbc:hsqldb:mem:aname");
-        dataSource.setMaxActive(10);
-        dataSource.setMaxIdle(5);
-        dataSource.setInitialSize(5);
-        dataSource.setValidationQuery("SELECT 1 FROM INFORMATION_SCHEMA.SYSTEM_USERS");
-        
+//        dataSource.setMaxActive(10);
+//        dataSource.setMaxIdle(5);
+//        dataSource.setInitialSize(5);
+//        dataSource.setValidationQuery("SELECT 1 FROM INFORMATION_SCHEMA.SYSTEM_USERS");
+
         return dataSource;
-        
+
     }
+
     /**
-     * Generate a Hsqldb DataSource from Properties 
+     * Generate a Hsqldb DataSource from Properties
+     *
      * @param props
      * @return BasicDataSource as DataSource
      */
-    static DataSource GetRunTimeDataSource(Properties props){
-        
+    static DataSource GetRunTimeDataSource(Properties props) {
+
         BasicDataSource dataSource = new BasicDataSource();
-        
+
         dataSource.setDriverClassName("org.hsqldb.jdbcDriver");
         dataSource.setUsername(props.getProperty("username"));
         dataSource.setPassword(props.getProperty("password"));
@@ -65,99 +68,92 @@ public class HsqldbDMR extends GenericDMR {
         dataSource.setMaxActive(10);
         dataSource.setMaxIdle(5);
         dataSource.setInitialSize(5);
+        dataSource.setAccessToUnderlyingConnectionAllowed(true);
         dataSource.setValidationQuery("SELECT 1 FROM INFORMATION_SCHEMA.SYSTEM_USERS");
-        
+
         return dataSource;
     }
-            
-    void CreateTestTable () throws SQLException{
-        
-        System.out.println("dataSourse is NOT null:" + dmd.getURL());
-        
+
+    void CreateTestTable() throws SQLException {
+
+        logger.debug("dataSourse is NOT null: {}", dmd.getURL());
+
         String SQL = "Create table test1 (test1Id integer not null identity, test1Data integer  )";
         try {
             Connection conn = dataSource.getConnection();
-            System.out.println("here1");
-            if (dataSource == null){
-                System.out.println("dataSourse is null");
-                System.out.println("here2");
+            logger.trace("here1");
+            if (dataSource == null) {
+                logger.warn("dataSourse is null");
+                logger.trace("here2");
+            } else {
+                logger.debug("dataSourse is NOT null: {}", dataSource.toString());
+                logger.trace("here3");
             }
-            else {
-                System.out.println("dataSourse is NOT null:" + dataSource.toString());
-                System.out.println("here3");
-            }
-            
+
             Statement stmt = conn.createStatement();
-            
-            if (stmt == null){
-                System.out.println("stmt is null");
+
+            if (stmt == null) {
+                logger.warn("stmt is null");
+            } else {
+                logger.debug("stmt is NOT null");
             }
-            else {
-                System.out.println("stmt is NOT null");
-            }
-            
-            
+
+
             stmt.executeUpdate(SQL);
-            
+
             stmt.executeUpdate("insert into test1 (test1Data) values 1");
-            
+
             stmt.close();
-            
+
             conn.close();
-            
+
         } catch (SQLException ex) {
-            Logger.getLogger(HsqldbDMR.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error("Error ...", ex);
         }
-        
-        
+
     }
-    
-    void SelectTestRow (){
-        
+
+    void SelectTestRow() {
+
         try {
             Connection conn = dataSource.getConnection();
-            
+
             Statement stmt = conn.createStatement();
-            
+
             ResultSet rs = stmt.executeQuery("select * from test1");
 
             while (rs.next()) {
                 String id = rs.getString("test1Id");
                 String data = rs.getString("test1Data");
-                System.out.println("Id:" + id + "  Data:" + data);
+                logger.debug("Id: {}  Data: {}", id, data);
             }
         } catch (SQLException ex) {
-            Logger.getLogger(HsqldbDMR.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error("Error selecting test row", ex);
         }
-        
-        
-        
+
     }
-    
+
     public void printDataSourceStats() {
         try {
-            if (dataSource.isWrapperFor(BasicDataSource.class)){
+            if (dataSource.isWrapperFor(BasicDataSource.class)) {
                 BasicDataSource bds = dataSource.unwrap(BasicDataSource.class);
-                System.out.println("NumActive: " + bds.getNumActive());
-                System.out.println("NumIdle: " + bds.getNumIdle());
-                
-            }
-            else {
-                System.out.println ("DataSource Stats not available");
+                logger.debug("NumActive: {}", bds.getNumActive());
+                logger.debug("NumIdle: {}", bds.getNumIdle());
+
+            } else {
+                logger.warn("DataSource Stats not available");
             }
         } catch (SQLException ex) {
-            Logger.getLogger(HsqldbDMR.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error("Error getting stats", ex);
         }
-        
+
     }
-    
+
     /**
-     * When KeepOpen is true, ensures that the connection is working.
-     * When KeepOpen is false, attempts a temporary connection to 
-     *   validate the DataSource, but does not keep it open.
-     * 
-     * @return true if a connection to the source can be established
-     *         false if a connection cannot be established
+     * When KeepOpen is true, ensures that the connection is working. When KeepOpen is false, attempts a temporary
+     * connection to validate the DataSource, but does not keep it open.
+     *
+     * @return true if a connection to the source can be established false if a connection cannot be established
      */
     public boolean EnsureConnection() {
 
@@ -171,10 +167,9 @@ public class HsqldbDMR extends GenericDMR {
             }
 
         } catch (SQLException ex) {
-            Logger.getLogger(HsqldbDMR.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error("Error ensuring connection", ex);
         }
 
         return false;
     }
-   
 }
