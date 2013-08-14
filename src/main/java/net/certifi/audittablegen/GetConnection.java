@@ -18,7 +18,7 @@ import org.postgresql.Driver;
  */
 final class GetConnection {
  
-    static Connection ConnectionFromOptions(Properties prop) {
+    static Connection connectionFromOptions(Properties prop) {
 
         String connectionURL;
         

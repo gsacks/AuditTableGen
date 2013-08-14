@@ -51,7 +51,7 @@ public class HsqldbDMRTest {
         try {
             hsqldbDMR = new HsqldbDMR(dataSource);
         } catch (SQLException ex) {
-            Logger.getLogger(HsqldbDMRTest.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error("failed to create dataSource for test class: " + ex.getMessage());
         }
     }
     
@@ -61,7 +61,7 @@ public class HsqldbDMRTest {
 
 
     /**
-     * Test of CreateTestTable method, of class HsqldbDMR.
+     * Test of createTestTable method, of class HsqldbDMR.
      */
 //    @Test
     public void testCreateTestTable() {
@@ -69,20 +69,20 @@ public class HsqldbDMRTest {
         //doThrow(new RuntimeException()).when(dataSource).getConnection();
         HsqldbDMR instance = hsqldbDMR ;
         try {
-            instance.CreateTestTable();
+            instance.createTestTable();
         } catch (SQLException ex) {
             fail("CreateTestTable threw exception");
         }
     }
 
     /**
-     * Test of SelectTestRow method, of class HsqldbDMR.
+     * Test of selectTestRow method, of class HsqldbDMR.
      */
 //    @Test
     public void testSelectTestRow() {
         System.out.println("SelectTestRow");
         HsqldbDMR instance = hsqldbDMR;
-        instance.SelectTestRow();
+        instance.selectTestRow();
 
     }
 
@@ -115,7 +115,7 @@ public class HsqldbDMRTest {
     @Test
     public void testGetRunTimeDataSource_0args() throws SQLException {
         logger.error("****************************************************");
-        DataSource ds = HsqldbDMR.GetRunTimeDataSource();
+        DataSource ds = HsqldbDMR.getRunTimeDataSource();
         assertThat(ds.getConnection().getSchema()).isEqualTo("PUBLIC");
         logger.trace("Got connection to schema: {}", ds.getConnection().getSchema());
     }

@@ -6,10 +6,13 @@ package net.certifi.audittablegen;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Properties;
 import javax.sql.DataSource;
 import org.apache.commons.dbcp.BasicDataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -17,25 +20,59 @@ import org.apache.commons.dbcp.BasicDataSource;
  * @author Glenn Sacks
  */
 class GenericDMR implements DataSourceDMR {
-    
+    private static final Logger logger = LoggerFactory.getLogger(GenericDMR.class);
     DataSource dataSource;
     DatabaseMetaData dmd;
+    String databaseProduct;
+    String targetSchema;
+    String auditConfigTable;
     
+    /**
+     * 
+     * @param ds A DataSource. Unless set elsewhere,
+     * the default database/schema will be targeted.
+     * 
+     * @throws SQLException 
+     */
     GenericDMR (DataSource ds) throws SQLException{
         
+        this (ds, null);
+        
+    }
+    /**
+     *
+     * @param ds A DataSource
+     *
+     * @param schema Name of schema to perform operations upon.
+     * @throws SQLException
+     */
+    GenericDMR(DataSource ds, String schema) throws SQLException {
+
         dataSource = ds;
         Connection conn = ds.getConnection();
         dmd = conn.getMetaData();
+        targetSchema = schema;
+        databaseProduct = dmd.getDatabaseProductName();
+        auditConfigTable = "auditconfig";
         conn.close();
-        
+
+    }
+
+    /**
+     * Set the schema to perform operations upon.
+     * 
+     * @param schema 
+     */
+    void setSchemaName (String schema){
+        targetSchema = schema;
     }
     
-        /**
+    /**
      * Generate a DataSource from Properties 
      * @param props
      * @return BasicDataSource as DataSource
      */
-    static DataSource GetRunTimeDataSource(Properties props){
+    static DataSource getRunTimeDataSource(Properties props){
         
         BasicDataSource dataSource = new BasicDataSource();
         
@@ -51,9 +88,53 @@ class GenericDMR implements DataSourceDMR {
         return dataSource;
     }
     
-    public boolean EnsureConnection (){
+    public boolean ensureConnection (){
         
         return true;
     }
     
+    /**
+     * Return true of the audit configuration source is
+     * avaliable.  Only one source is currently supported, and
+     * that is a table in the target database/schema named
+     * auditconfig.
+     * 
+     * @return 
+     */
+    public Boolean loadConfigSource (){
+        
+        try {
+            ResultSet rs;
+            //DatabaseMetaData dmd = dataSource.getConnection().getMetaData();
+            if (dmd.storesLowerCaseIdentifiers()){
+                rs = dmd.getTables(null, null == targetSchema ? null : targetSchema.toLowerCase(), auditConfigTable.toLowerCase(), null);
+                logger.debug("running lower case");
+            }
+            else if (dmd.storesMixedCaseIdentifiers()){
+                rs = dmd.getTables(null, null == targetSchema ? null : targetSchema, auditConfigTable, null);
+                logger.debug("running mixed case");
+            }
+            else {
+                rs = dmd.getTables(null, null == targetSchema ? null : targetSchema.toUpperCase(), auditConfigTable.toUpperCase(), null);
+                logger.debug("running upper case");
+            }
+            
+            while (rs.next()){
+                if (rs.getString("TABLE_NAME").equalsIgnoreCase(auditConfigTable)){
+                    //do something
+                    logger.info ("Audit Configuration Found");
+                    return true;
+                }
+            }
+        }
+        catch (SQLException e){
+            logger.error("SQL error retrieving audit configuration source: " + e.getMessage());
+            return false;
+        }
+        
+        logger.error("Audit configuration source not found");
+        
+        return false;
+        
+    }
 }

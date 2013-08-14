@@ -14,17 +14,24 @@ import java.util.logging.Logger;
 import javax.sql.DataSource;
 import org.apache.commons.dbcp.BasicDataSource;
 import org.postgresql.Driver;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  * @author Glenn Sacks
  */
 public class PostgresqlDMR extends GenericDMR {
-    
+    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AuditTableGen.class);
 
     PostgresqlDMR (DataSource ds) throws SQLException{
         
         super(ds);
+        
+    }
+    
+    PostgresqlDMR (DataSource ds, String schema) throws SQLException{
+        
+        super(ds, schema);
         
     }
         
@@ -33,7 +40,7 @@ public class PostgresqlDMR extends GenericDMR {
      * @param props
      * @return BasicDataSource as DataSource
      */
-    static DataSource GetRunTimeDataSource(Properties props){
+    static DataSource getRunTimeDataSource(Properties props){
         
         BasicDataSource dataSource = new BasicDataSource();
         
@@ -49,7 +56,7 @@ public class PostgresqlDMR extends GenericDMR {
         return dataSource;
     }
             
-    void CreateTestTable () throws SQLException{
+    void createTestTable () throws SQLException{
         
         System.out.println("dataSourse is NOT null:" + dmd.getURL());
         
@@ -85,13 +92,12 @@ public class PostgresqlDMR extends GenericDMR {
             conn.close();
             
         } catch (SQLException ex) {
-            Logger.getLogger(PostgresqlDMR.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error("Error creating test table:" + ex.getMessage() );
         }
-        
         
     }
     
-    void SelectTestRow (){
+    void selectTestRow (){
         
         try {
             Connection conn = dataSource.getConnection();
@@ -106,10 +112,8 @@ public class PostgresqlDMR extends GenericDMR {
                 System.out.println("Id:" + id + "  Data:" + data);
             }
         } catch (SQLException ex) {
-            Logger.getLogger(PostgresqlDMR.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error("Error selecting from test table:" + ex.getMessage() );
         }
-        
-        
         
     }
     
@@ -125,7 +129,7 @@ public class PostgresqlDMR extends GenericDMR {
                 System.out.println ("DataSource Stats not available");
             }
         } catch (SQLException ex) {
-            Logger.getLogger(PostgresqlDMR.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error("Error getting DataSource stats:" + ex.getMessage() );
         }
         
     }
@@ -138,7 +142,8 @@ public class PostgresqlDMR extends GenericDMR {
      * @return true if a connection to the source can be established
      *         false if a connection cannot be established
      */
-    public boolean EnsureConnection() {
+    @Override
+    public boolean ensureConnection() {
 
         Connection conn;
 
@@ -150,7 +155,7 @@ public class PostgresqlDMR extends GenericDMR {
             }
 
         } catch (SQLException ex) {
-            Logger.getLogger(PostgresqlDMR.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error("Error validating connection:" + ex.getMessage() );
         }
 
         return false;

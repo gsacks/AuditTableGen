@@ -14,7 +14,7 @@ import java.sql.Statement;
  * @author Glenn Sacks
  */
 public class TestConnection {
-    static void GetData (Connection conn) throws SQLException{
+    static void getData (Connection conn) throws SQLException{
         
         Statement statement = conn.createStatement();
         ResultSet rs = statement.executeQuery("Select * from testSandbox.table1");

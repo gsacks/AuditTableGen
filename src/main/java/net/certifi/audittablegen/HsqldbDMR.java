@@ -35,7 +35,7 @@ public class HsqldbDMR extends GenericDMR {
      *
      * @return BasicDataSource as DataSource
      */
-    static DataSource GetRunTimeDataSource() {
+    static DataSource getRunTimeDataSource() {
         //        BasicDataSource dataSource = new BasicDataSource();
         JDBCDataSource dataSource = new JDBCDataSource();
 //        dataSource.setDriverClassName("org.hsqldb.jdbcDriver");
@@ -57,7 +57,7 @@ public class HsqldbDMR extends GenericDMR {
      * @param props
      * @return BasicDataSource as DataSource
      */
-    static DataSource GetRunTimeDataSource(Properties props) {
+    static DataSource getRunTimeDataSource(Properties props) {
 
         BasicDataSource dataSource = new BasicDataSource();
 
@@ -74,7 +74,7 @@ public class HsqldbDMR extends GenericDMR {
         return dataSource;
     }
 
-    void CreateTestTable() throws SQLException {
+    void createTestTable() throws SQLException {
 
         logger.debug("dataSourse is NOT null: {}", dmd.getURL());
 
@@ -113,7 +113,7 @@ public class HsqldbDMR extends GenericDMR {
 
     }
 
-    void SelectTestRow() {
+    void selectTestRow() {
 
         try {
             Connection conn = dataSource.getConnection();
@@ -155,7 +155,8 @@ public class HsqldbDMR extends GenericDMR {
      *
      * @return true if a connection to the source can be established false if a connection cannot be established
      */
-    public boolean EnsureConnection() {
+    @Override
+    public boolean ensureConnection() {
 
         Connection conn;
 

@@ -30,7 +30,7 @@ public class AuditTableGen {
      * @param dataSource
      * @throws SQLException
      */
-    AuditTableGen(DataSource dataSource) throws SQLException {
+    AuditTableGen(DataSource dataSource, String targetSchema) throws SQLException {
 
         //do stuff
         Connection connection = dataSource.getConnection();
@@ -40,10 +40,21 @@ public class AuditTableGen {
         dmd.getDriverMinorVersion();
         dmd.getDriverName();
         dmd.getDriverVersion();
+        logger.debug("DatabaseProduct: {}", dmd.getDatabaseProductName());
 
         try {
             catalog = connection.getCatalog();
-            schema = connection.getSchema();
+
+            if (targetSchema.isEmpty() || targetSchema == null) {
+                try {
+                    schema = connection.getSchema();
+                } catch (AbstractMethodError e) {
+                    logger.error("Abstract method getSchema() not implemented");
+                    schema = "";
+                }
+            } else {
+                schema = targetSchema;
+            }
         } catch (SQLException e) {
             logger.error("Error getting catalog/schema", e);
         }
@@ -64,7 +75,7 @@ public class AuditTableGen {
 
     }
 
-    String GetDataSourceInfo() throws SQLException {
+    String getDataSourceInfo() throws SQLException {
 
         StringBuilder s = new StringBuilder();
 
@@ -94,6 +105,9 @@ public class AuditTableGen {
                 .append("Target Catalog: ").append(catalog).append(System.lineSeparator())
                 .append("Target Schema: ").append(schema).append(System.lineSeparator());
 
+       if (dmr.loadConfigSource()){
+           s.append("Has auditConfigSource table").append(System.lineSeparator());
+       }
         return s.toString();
 
     }
@@ -108,6 +122,7 @@ public class AuditTableGen {
         options.addOption("u", "username", true, "DB server login username");
         options.addOption("p", "password", true, "DB server login password");
         options.addOption("f", "filename", true, "name of file to store the script");
+        options.addOption("schema", true, "name of the target schema");
         options.addOption("url", true, "full url to DB.  Overrides -d, -s");
         CommandLineParser parser = new GnuParser();
         CommandLine cmd;
@@ -122,7 +137,7 @@ public class AuditTableGen {
                 return;
             }
 
-            prop = GetRunTimeProperties(cmd);
+            prop = getRunTimeProperties(cmd);
 
             if (!prop.getProperty("validArgs", "false").equals("true")) {
                 usage(options);
@@ -137,9 +152,9 @@ public class AuditTableGen {
         }
 
         try {
-            ds = GetRunTimeDataSource(prop);
-            atg = new AuditTableGen(ds);
-            logger.info(atg.GetDataSourceInfo());
+            ds = getRunTimeDataSource(prop);
+            atg = new AuditTableGen(ds, prop.getProperty("schema", null));
+            logger.info(atg.getDataSourceInfo());
 
             //DataSourceDMR dsDMR = GetDataSourceDMR (cmd);
 //            Connection conn = GetConnection.ConnectionFromOptions(prop);
@@ -167,12 +182,12 @@ public class AuditTableGen {
      * @param cmd
      * @return
      */
-    static Properties GetRunTimeProperties(CommandLine cmd) {
+    static Properties getRunTimeProperties(CommandLine cmd) {
 
         Boolean isValid = true;
         Properties prop = new Properties();
         String driver = "";
-        String subSchema = "";
+        String subSchema = ""; //should indicate the JDBC driver
 
         //set url property
         if (cmd.hasOption("url")) {
@@ -224,7 +239,7 @@ public class AuditTableGen {
         //more params (for now)
         //do not require - these can also be passed on the url
         if (prop.containsKey("url")) {
-            List<String> argList = Arrays.asList("username", "password");
+            List<String> argList = Arrays.asList("username", "password","schema");
             for (String arg : argList) {
                 if (cmd.hasOption(arg)) {
                     prop.setProperty(arg, cmd.getOptionValue(arg));
@@ -246,7 +261,7 @@ public class AuditTableGen {
 
     }
 
-    static DataSource GetRunTimeDataSource(Properties props) {
+    static DataSource getRunTimeDataSource(Properties props) {
 
         DataSource ds;
         String driver;
@@ -254,17 +269,17 @@ public class AuditTableGen {
         if (props.containsKey("url")) {
             driver = props.getProperty("driver", "");
             if (driver.toLowerCase().contains("hsqldb")) {
-                ds = HsqldbDMR.GetRunTimeDataSource(props);
+                ds = HsqldbDMR.getRunTimeDataSource(props);
             } else if (driver.toLowerCase().contains("postgresql")) {
-                ds = PostgresqlDMR.GetRunTimeDataSource(props);
+                ds = PostgresqlDMR.getRunTimeDataSource(props);
             } else {
                 //take a shot at it with user supplied driver & url
-                ds = GenericDMR.GetRunTimeDataSource(props);
+                ds = GenericDMR.getRunTimeDataSource(props);
             }
         } else {
             //no url provided
             //in memory hsqldb - testing only
-            ds = HsqldbDMR.GetRunTimeDataSource();
+            ds = HsqldbDMR.getRunTimeDataSource();
         }
 
         return ds;
