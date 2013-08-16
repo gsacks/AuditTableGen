@@ -17,7 +17,9 @@ import org.slf4j.LoggerFactory;
 public class AuditTableGen {
 
     private static final Logger logger = LoggerFactory.getLogger(AuditTableGen.class);
+    DataSource dataSource;
     Properties connectionProperties;
+    Connection connection;
     DatabaseMetaData dmd;
     DataSourceDMR dmr;
     String driver;
@@ -32,14 +34,9 @@ public class AuditTableGen {
      */
     AuditTableGen(DataSource dataSource, String targetSchema) throws SQLException {
 
-        //do stuff
-        Connection connection = dataSource.getConnection();
-        //connectionProperties = connection.getClientInfo();
-        dmd = connection.getMetaData();
-        dmd.getDriverMajorVersion();
-        dmd.getDriverMinorVersion();
-        dmd.getDriverName();
-        dmd.getDriverVersion();
+        this.dataSource = dataSource;
+        this.openConnection();
+        
         logger.debug("DatabaseProduct: {}", dmd.getDatabaseProductName());
 
         try {
@@ -75,6 +72,23 @@ public class AuditTableGen {
 
     }
 
+    void openConnection() throws SQLException {
+        
+        //do stuff
+        closeConnection();
+        connection = dataSource.getConnection();
+        //connectionProperties = connection.getClientInfo();
+        dmd = connection.getMetaData();
+        dmd.getDriverMajorVersion();
+        dmd.getDriverMinorVersion();
+        dmd.getDriverName();
+        dmd.getDriverVersion();
+    }
+    
+    void closeConnection() throws SQLException {
+        connection.close();
+    }
+    
     String getDataSourceInfo() throws SQLException {
 
         StringBuilder s = new StringBuilder();
@@ -105,7 +119,7 @@ public class AuditTableGen {
                 .append("Target Catalog: ").append(catalog).append(System.lineSeparator())
                 .append("Target Schema: ").append(schema).append(System.lineSeparator());
 
-       if (dmr.loadConfigSource()){
+       if (dmr.hasConfigSource()){
            s.append("Has auditConfigSource table").append(System.lineSeparator());
        }
         return s.toString();

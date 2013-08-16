@@ -1,0 +1,67 @@
+
+<databaseChangeLog logicalFilePath="changeset-00initial.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <changeSet author="gsacks" id="1">
+        <createTable tableName="auditconfig">
+            <column name="auditconfigid" type="INTEGER" autoIncrement="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="attribute" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="insertts" type="TIMESTAMP"/>
+            <column name="insertuserid" type="INTEGER"/>
+            <column name="updatets" type="TIMESTAMP" defaultValueDate="CURRENT_TIMESTAMP"/>
+            <column name="updateuserid" type="INTEGER"/>
+            <column name="deletedflag" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="auditconfig" constraintName="auditconfig_pk" columnNames="auditconfigid"/>
+        <createTable tableName="auditconfigattribute">
+            <column name="auditconfigattributeid" type="INTEGER" autoIncrement="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="attribute" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="deletedflag" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="insertts" type="TIMESTAMP"/>
+            <column name="insertuserid" type="INTEGER"/>
+            <column name="updatets" type="TIMESTAMP" defaultValueDate="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updateuserid" type="INTEGER"/>
+            <column name="version" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="auditconfigattribute" constraintName="auditconfigattribute_pk" columnNames="auditconfigattributeid"/>
+        <addUniqueConstraint tableName="auditconfigattribute" columnNames="attribute"/>
+        <addForeignKeyConstraint baseTableName="auditconfig" constraintName="fk_auditconfig_auditconfigattribute" baseColumnNames="attribute" referencedTableName="auditconfigattribute" referencedColumnNames="attribute"/>
+ </changeSet>
+    
+    <changeSet id="insert-initial-attributes" author="gsacks"> 
+        <sql>
+            insert into auditconfigattribute (attribute, description) values ('include','include named table or column in the audit list. Accepts regexp in table and column.  Use to override exclude.');
+            insert into auditconfigattribute (attribute, description) values ('exclude','exclude named table or column in the audit list. Accepts regexp in table and column.');
+            insert into auditconfigattribute (attribute, description) values ('tableprefix','audit table prefix pattern. Set value=&lt;prefix&gt;. Default if not set is ZZ_');
+            insert into auditconfigattribute (attribute, description) values ('tablepostfix','audit table postfix pattern.  Set value=&lt;prefix&gt;. Derfault is no postfix');
+            insert into auditconfigattribute (attribute, description) values ('columnprefix','audit column prefix pattern.  Set value=&lt;prefix&gt;. Default is no prefix');
+            insert into auditconfigattribute (attribute, description) values ('columnpostfix','audit column postfix pattern.  Set value=&lt;prefix&gt;. Derfault is no postfix');
+            insert into auditconfigattribute (attribute, description) values ('auditinsert','apply audit insert trigger. Looks at tablename and value.  accepts regexp in tablename. Value is true or false.  Default is true.');
+            insert into auditconfigattribute (attribute, description) values ('auditupdate','apply audit update trigger. Looks at tablename and value.  accepts regexp in tablename. Value is true or false.  Default is true.');
+            insert into auditconfigattribute (attribute, description) values ('auditdelete','apply audit delete trigger. Looks at tablename and value.  accepts regexp in tablename. Value is true or false.  Default is true.');
+        </sql> 
+    </changeSet>
+    
+</databaseChangeLog>

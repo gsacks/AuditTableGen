@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 class GenericDMR implements DataSourceDMR {
     private static final Logger logger = LoggerFactory.getLogger(GenericDMR.class);
     DataSource dataSource;
-    DatabaseMetaData dmd;
     String databaseProduct;
     String targetSchema;
     String auditConfigTable;
@@ -50,6 +49,7 @@ class GenericDMR implements DataSourceDMR {
 
         dataSource = ds;
         Connection conn = ds.getConnection();
+        DatabaseMetaData dmd;
         dmd = conn.getMetaData();
         targetSchema = schema;
         databaseProduct = dmd.getDatabaseProductName();
@@ -83,14 +83,10 @@ class GenericDMR implements DataSourceDMR {
         dataSource.setMaxActive(10);
         dataSource.setMaxIdle(5);
         dataSource.setInitialSize(5);
+        
         //dataSource.setValidationQuery("SELECT 1");
         
         return dataSource;
-    }
-    
-    public boolean ensureConnection (){
-        
-        return true;
     }
     
     /**
@@ -101,11 +97,13 @@ class GenericDMR implements DataSourceDMR {
      * 
      * @return 
      */
-    public Boolean loadConfigSource (){
+    public Boolean hasConfigSource (){
+        
+        Boolean retval = false;
         
         try {
             ResultSet rs;
-            //DatabaseMetaData dmd = dataSource.getConnection().getMetaData();
+            DatabaseMetaData dmd = dataSource.getConnection().getMetaData();
             if (dmd.storesLowerCaseIdentifiers()){
                 rs = dmd.getTables(null, null == targetSchema ? null : targetSchema.toLowerCase(), auditConfigTable.toLowerCase(), null);
                 logger.debug("running lower case");
@@ -123,18 +121,20 @@ class GenericDMR implements DataSourceDMR {
                 if (rs.getString("TABLE_NAME").equalsIgnoreCase(auditConfigTable)){
                     //do something
                     logger.info ("Audit Configuration Found");
-                    return true;
+                    retval = true;
                 }
+            }
+            
+            if (!retval){
+                logger.debug("Audit configuration source not found");
             }
         }
         catch (SQLException e){
             logger.error("SQL error retrieving audit configuration source: " + e.getMessage());
-            return false;
+            retval = false;
         }
         
-        logger.error("Audit configuration source not found");
-        
-        return false;
+        return retval;
         
     }
 }

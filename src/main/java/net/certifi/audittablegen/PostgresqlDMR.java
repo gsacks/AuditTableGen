@@ -58,7 +58,7 @@ public class PostgresqlDMR extends GenericDMR {
             
     void createTestTable () throws SQLException{
         
-        System.out.println("dataSourse is NOT null:" + dmd.getURL());
+        //System.out.println("dataSourse is NOT null:" + dmd.getURL());
         
         String SQL = "Create table test1 (test1Id integer not null identity, test1Data integer  )";
         try {
@@ -142,7 +142,7 @@ public class PostgresqlDMR extends GenericDMR {
      * @return true if a connection to the source can be established
      *         false if a connection cannot be established
      */
-    @Override
+    //@Override
     public boolean ensureConnection() {
 
         Connection conn;

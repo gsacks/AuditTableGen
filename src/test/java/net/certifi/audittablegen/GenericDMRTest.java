@@ -7,6 +7,13 @@ package net.certifi.audittablegen;
 import java.sql.*;
 import java.util.Properties;
 import javax.sql.DataSource;
+import liquibase.Liquibase;
+import liquibase.database.Database;
+import liquibase.database.DatabaseFactory;
+import liquibase.database.jvm.JdbcConnection;
+import liquibase.datatype.LiquibaseDataType;
+import liquibase.exception.LiquibaseException;
+import liquibase.resource.FileSystemResourceAccessor;
 import org.hsqldb.jdbc.JDBCDataSource;
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -45,20 +52,29 @@ public class GenericDMRTest {
         try {
 
             dmr = new GenericDMR(dataSource);           
+//            Connection conn = dataSource.getConnection();
+//            dmd = conn.getMetaData();
+//            Statement stmt = conn.createStatement();
+//            stmt.executeUpdate("create table auditconfig (attribute varchar(100), target varchar(100) )");
+//            logger.info("ran create table auditconfig");
+            
+            Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(dataSource.getConnection()));
+            Liquibase liquibase = new Liquibase("src/test/resources/changesets/changeset-init-config.xml", new FileSystemResourceAccessor(), database);
+            liquibase.update(null);
+            
             Connection conn = dataSource.getConnection();
             dmd = conn.getMetaData();
-            Statement stmt = conn.createStatement();
-            stmt.executeUpdate("create table auditconfig (attribute varchar(100), target varchar(100) )");
-            logger.info("ran create table auditconfig");
-            
             ResultSet rs = dmd.getTables(null, null, "AUDITCONFIG", null);
             while (rs.next()){
                 if (rs.getString("TABLE_NAME").equalsIgnoreCase("auditconfig")){
-                    logger.info ("Test setup - Audit Configuration created");
+                    logger.info ("Validating test setup - Audit Configuration created");
                 }
             }
+            
         } catch (SQLException e){
             logger.error("error setting up unit tests: " + e.getMessage());
+        } catch (LiquibaseException le){
+            logger.error("liquibase error" + le.getMessage());
         }
         
         
@@ -74,11 +90,10 @@ public class GenericDMRTest {
     @Test
     public void testSetSchemaName() {
         System.out.println("setSchemaName");
-        String schema = "";
-        GenericDMR instance = null;
+        String schema = "public";
+        GenericDMR instance = dmr;
         instance.setSchemaName(schema);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        assertEquals(instance.targetSchema, schema);       
     }
 
     /**
@@ -87,39 +102,21 @@ public class GenericDMRTest {
     @Test
     public void testGetRunTimeDataSource() {
         System.out.println("getRunTimeDataSource");
-        Properties props = null;
-        DataSource expResult = null;
+        Properties props = mock(Properties.class);
         DataSource result = GenericDMR.getRunTimeDataSource(props);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        assertNotNull(result);
     }
 
     /**
-     * Test of ensureConnection method, of class GenericDMR.
-     */
-    @Test
-    public void testEnsureConnection() {
-        System.out.println("ensureConnection");
-        GenericDMR instance = null;
-        boolean expResult = false;
-        boolean result = instance.ensureConnection();
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
-    }
-
-    /**
-     * Test of loadConfigSource method, of class GenericDMR.
+     * Test of hasConfigSource method, of class GenericDMR.
      */
     @Test
     public void testLoadConfigSource() {
         System.out.println("loadConfigSource");
         GenericDMR instance = dmr;
         dmr.dataSource = dataSource;
-        dmr.dmd = dmd;
         Boolean expResult = true;
-        Boolean result = instance.loadConfigSource();
+        Boolean result = instance.hasConfigSource();
         assertEquals(expResult, result);
 
     }

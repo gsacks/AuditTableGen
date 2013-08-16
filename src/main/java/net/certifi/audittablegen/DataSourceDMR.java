@@ -11,7 +11,7 @@ package net.certifi.audittablegen;
  */
 public interface DataSourceDMR {
     
-    boolean ensureConnection ();
-    Boolean loadConfigSource ();
+    //boolean validateConnection ();
+    Boolean hasConfigSource ();
     
 }

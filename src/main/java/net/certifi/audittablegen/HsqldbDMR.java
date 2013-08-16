@@ -76,7 +76,7 @@ public class HsqldbDMR extends GenericDMR {
 
     void createTestTable() throws SQLException {
 
-        logger.debug("dataSourse is NOT null: {}", dmd.getURL());
+       //logger.debug("dataSourse is NOT null: {}", dmd.getURL());
 
         String SQL = "Create table test1 (test1Id integer not null identity, test1Data integer  )";
         try {
@@ -155,7 +155,7 @@ public class HsqldbDMR extends GenericDMR {
      *
      * @return true if a connection to the source can be established false if a connection cannot be established
      */
-    @Override
+    //@Override
     public boolean ensureConnection() {
 
         Connection conn;
