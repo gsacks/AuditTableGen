@@ -4,6 +4,7 @@
  */
 package net.certifi.audittablegen;
 
+import com.google.common.base.Throwables;
 import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -158,8 +159,9 @@ class GenericDMR implements DataSourceDMR {
             }
             return conn;
         } catch (SQLException ex) {
-            logger.error("Error getting connection:", ex.getMessage());
-            return null;
+            logger.error("Error getting connection:", ex);
+            //return null;
+            throw Throwables.propagate(ex);
         }
         
     }
@@ -346,7 +348,7 @@ class GenericDMR implements DataSourceDMR {
     
     Map getColumnMetaDataForTable (String tableName){
         
-        Map columns;
+        Map columns = new HashMap<String, HashMap<String, String>>();
         
         try {
             DatabaseMetaData dmd = getConnection().getMetaData();
@@ -356,7 +358,9 @@ class GenericDMR implements DataSourceDMR {
             
             ResultSetMetaData rsmd = rs.getMetaData();
             int metaDataColumnCount = rsmd.getColumnCount();
-            columns = new HashMap<String, HashMap<String, String>>();
+            if (! rs.isBeforeFirst()) {
+                throw new RuntimeException("No results for DatabaseMetaData.getColumns(" + targetSchema + "." + tableName + ")");
+            }
             while (rs.next()){
                 Map columnMetaData = new HashMap<String, String>();
                 for (int i = 1; i <= metaDataColumnCount; i++){
@@ -367,8 +371,7 @@ class GenericDMR implements DataSourceDMR {
             
         }
         catch (SQLException e) {
-            logger.error("Error getting table metaData: %s", e.getMessage());
-            columns = null;
+            throw Throwables.propagate(e);
         }
         
         return columns;

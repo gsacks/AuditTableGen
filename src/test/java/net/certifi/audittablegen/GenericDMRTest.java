@@ -5,6 +5,7 @@
 package net.certifi.audittablegen;
 
 import java.sql.*;
+import java.util.Map;
 import java.util.Properties;
 import javax.sql.DataSource;
 import liquibase.Liquibase;
@@ -51,13 +52,8 @@ public class GenericDMRTest {
         
         try {
 
-            dmr = new GenericDMR(dataSource);           
-//            Connection conn = dataSource.getConnection();
-//            dmd = conn.getMetaData();
-//            Statement stmt = conn.createStatement();
-//            stmt.executeUpdate("create table auditconfig (attribute varchar(100), target varchar(100) )");
-//            logger.info("ran create table auditconfig");
-            
+            dmr = new GenericDMR(dataSource, "PUBLIC"); 
+
             Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(dataSource.getConnection()));
             Liquibase liquibase = new Liquibase("src/test/resources/changesets/changeset-init-config.xml", new FileSystemResourceAccessor(), database);
             liquibase.update(null);
@@ -90,9 +86,10 @@ public class GenericDMRTest {
     @Test
     public void testSetSchemaName() {
         System.out.println("setSchemaName");
-        String schema = "public";
+        String schema = "PUBLIC";
         GenericDMR instance = dmr;
         instance.setSchemaName(schema);
+        instance.getConnection();
         assertEquals(instance.targetSchema, schema);       
     }
 
@@ -113,11 +110,15 @@ public class GenericDMRTest {
     @Test
     public void testLoadConfigSource() {
         System.out.println("loadConfigSource");
-        GenericDMR instance = dmr;
-        dmr.dataSource = dataSource;
-        Boolean expResult = true;
-        Boolean result = instance.hasConfigSource();
-        assertEquals(expResult, result);
 
+        Boolean expResult = true;
+        Boolean result = dmr.hasConfigSource();
+        assertEquals(expResult, result);
+    }
+    
+    @Test
+    public void testGetColumnMetaDataForTable() {
+        Map columnMetaDataForTable = dmr.getColumnMetaDataForTable("AUDITCONFIG");
+        logger.debug("");
     }
 }
