@@ -77,16 +77,18 @@ public class AuditTableGen {
         //do stuff
         closeConnection();
         connection = dataSource.getConnection();
-        //connectionProperties = connection.getClientInfo();
+        connectionProperties = connection.getClientInfo();
         dmd = connection.getMetaData();
         dmd.getDriverMajorVersion();
         dmd.getDriverMinorVersion();
         dmd.getDriverName();
         dmd.getDriverVersion();
+        
     }
     
     void closeConnection() throws SQLException {
         connection.close();
+        dmd = null;
     }
     
     String getDataSourceInfo() throws SQLException {

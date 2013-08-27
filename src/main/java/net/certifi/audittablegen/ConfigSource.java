@@ -5,6 +5,7 @@
 package net.certifi.audittablegen;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,40 +17,110 @@ import org.slf4j.LoggerFactory;
 public class ConfigSource {
     private static final Logger logger = LoggerFactory.getLogger(ConfigSource.class);
     
-    Map<String, Map> tablesAttributes;
-    String prefix;
-    String postfix;
+    Map<String, TableConfig> tablesConfig;
+    HashSet<String> existingAuditTables;
+    String tablePrefix = "zz_";
+    String tablePostfix = "";
+    String columnPrefix = "";
+    String columnPostfix = "";
     
     ConfigSource(){
-        tablesAttributes = new HashMap<String, Map>();        
+        tablesConfig = new HashMap<String, TableConfig>();
+        existingAuditTables = new HashSet<String>();
     }
     
-    boolean addExcludeTable (String tableName){
+    void addExistingAuditTable (String auditTableName){
+        existingAuditTables.add(auditTableName);
+    }
+    
+    Boolean hasExistingAuditTable (String auditTableName){
+        return existingAuditTables.contains(auditTableName);
+    }
+    
+    void addTableConfig (String tableName){
         
-        if(tablesAttributes.containsKey(tableName)){
+        if(tablesConfig.containsKey(tableName)){
             //table already exists
-            return false;
+            return;
         }
         else {
-            Map m = new HashMap<String, String>();
-            tablesAttributes.put(tableName, m);
-            return true;
+            TableConfig tc = new TableConfig(tableName);
+            tablesConfig.put(tableName, tc);
+            return;
         }
     }
     
-    void addExcludeColumn (String tableName, String columnName){
+    void ensureTableConfig (String tableName){
+        addTableConfig(tableName);
+    }
     
-        Map<String, String> table;
+    void addExcludedColumn (String tableName, String columnName){
+    
+        TableConfig tc;
         
-        if(tablesAttributes.containsKey(tableName)){
-            table = tablesAttributes.get("tableName");
+        if(tablesConfig.containsKey(tableName)){
+            tc = tablesConfig.get(tableName);
         }
         else {
-            table = new HashMap<String, String>();
-            tablesAttributes.put(tableName, table);
+            tc = new TableConfig(tableName);
+            tablesConfig.put(tableName, tc);
         }
         
-        table.put("excludeColumn", columnName);
+        tc.addExcludedColumn(columnName);
         
     }
+    
+    void addIncludedColumn (String tableName, String columnName){
+    
+        TableConfig tc;
+        
+        if(tablesConfig.containsKey(tableName)){
+            tc = tablesConfig.get(tableName);
+        }
+        else {
+            tc = new TableConfig(tableName);
+            tablesConfig.put(tableName, tc);
+        }
+        
+        tc.addIncludedColumn(columnName);
+        
+    }
+
+    TableConfig getTableConfig (String tableName){
+        return tablesConfig.get(tableName);
+    }
+    
+    String getTablePostfix() {
+        return tablePostfix;
+    }
+
+    void setTablePostfix(String tablePostfix) {
+        this.tablePostfix = tablePostfix;
+    }
+
+    String getTablePrefix() {
+        return tablePrefix;
+    }
+
+    void setTablePrefix(String tablePrefix) {
+        this.tablePrefix = tablePrefix;
+    }
+
+    String getColumnPostfix() {
+        return columnPostfix;
+    }
+
+    void setColumnPostfix(String columnPostfix) {
+        this.columnPostfix = columnPostfix;
+    }
+
+    String getColumnPrefix() {
+        return columnPrefix;
+    }
+
+    void setColumnPrefix(String columnPrefix) {
+        this.columnPrefix = columnPrefix;
+    }
+    
+    
 }

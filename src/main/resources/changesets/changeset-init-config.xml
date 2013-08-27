@@ -1,7 +1,7 @@
 
 <databaseChangeLog logicalFilePath="changeset-init-config.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
-    <changeSet author="gsacks" id="1">
+    <changeSet author="gsacks" id="AuditTableGen config">
         <createTable tableName="auditconfig">
             <column name="auditconfigid" type="INTEGER" autoIncrement="true">
                 <constraints nullable="false"/>
