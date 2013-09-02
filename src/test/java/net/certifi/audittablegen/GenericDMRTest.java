@@ -5,6 +5,7 @@
 package net.certifi.audittablegen;
 
 import java.sql.*;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import javax.sql.DataSource;
@@ -31,6 +32,8 @@ public class GenericDMRTest {
     GenericDMR dmr;
     JDBCDataSource dataSource;
     DatabaseMetaData dmd;
+    ConfigSource configSource;
+    IdentifierMetaData idMetaData;
     
     public GenericDMRTest() {
     }
@@ -58,6 +61,9 @@ public class GenericDMRTest {
             Liquibase liquibase = new Liquibase("src/test/resources/changesets/changeset-init-config.xml", new FileSystemResourceAccessor(), database);
             liquibase.update(null);
             
+            liquibase = new Liquibase("src/test/resources/changesets/changeset-sample-tables.xml", new FileSystemResourceAccessor(), database);
+            liquibase.update(null);
+            
             Connection conn = dataSource.getConnection();
             dmd = conn.getMetaData();
             ResultSet rs = dmd.getTables(null, null, "AUDITCONFIG", null);
@@ -68,9 +74,9 @@ public class GenericDMRTest {
             }
             
         } catch (SQLException e){
-            logger.error("error setting up unit tests: " + e.getMessage());
+            logger.error("error setting up unit tests: ", e);
         } catch (LiquibaseException le){
-            logger.error("liquibase error" + le.getMessage());
+            logger.error("liquibase error", le);
         }
         
         
@@ -118,7 +124,148 @@ public class GenericDMRTest {
     
     @Test
     public void testGetColumnMetaDataForTable() {
-        Map columnMetaDataForTable = dmr.getColumnMetaDataForTable("AUDITCONFIG");
+        
+        Map columnMetaDataForTable = dmr.getColumnMetaDataForTable("AUDITTABLECONFIG");
+        for (Iterator it = columnMetaDataForTable.entrySet().iterator(); it.hasNext();) {
+            Map.Entry<String, String> metaDataEntry = (Map.Entry<String, String>) it.next();
+            System.out.printf("Metadata column: %s, Metadata values: %s", metaDataEntry.getKey(), metaDataEntry.getValue());
+            System.out.println();
+        }
+        
         logger.debug("");
     }
+
+    /**
+     * Test of hasConfigSource method, of class GenericDMR.
+     */
+    @Test
+    public void testHasConfigSource() {
+        System.out.println("hasConfigSource");
+        GenericDMR instance = null;
+        Boolean expResult = null;
+        Boolean result = instance.hasConfigSource();
+        assertEquals(expResult, result);
+        // TODO review the generated test code and remove the default call to fail.
+        fail("The test case is a prototype.");
+    }
+
+    /**
+     * Test of getConnection method, of class GenericDMR.
+     */
+    @Test
+    public void testGetConnection() {
+        System.out.println("getConnection");
+        GenericDMR instance = null;
+        Connection expResult = null;
+        Connection result = instance.getConnection();
+        assertEquals(expResult, result);
+        // TODO review the generated test code and remove the default call to fail.
+        fail("The test case is a prototype.");
+    }
+
+    /**
+     * Test of getMetaData method, of class GenericDMR.
+     */
+    @Test
+    public void testGetMetaData() {
+        System.out.println("getMetaData");
+        GenericDMR instance = null;
+        DatabaseMetaData expResult = null;
+        DatabaseMetaData result = instance.getMetaData();
+        assertEquals(expResult, result);
+        // TODO review the generated test code and remove the default call to fail.
+        fail("The test case is a prototype.");
+    }
+
+    /**
+     * Test of loadConfigAttributes method, of class GenericDMR.
+     */
+    @Test
+    public void testLoadConfigAttributes() {
+        System.out.println("loadConfigAttributes");
+        ConfigSource configSource = null;
+        GenericDMR instance = null;
+        instance.loadConfigAttributes(configSource);
+        // TODO review the generated test code and remove the default call to fail.
+        fail("The test case is a prototype.");
+    }
+
+    /**
+     * Test of loadConfigTables method, of class GenericDMR.
+     */
+    @Test
+    public void testLoadConfigTables() {
+        System.out.println("loadConfigTables");
+        ConfigSource configSource = null;
+        GenericDMR instance = null;
+        instance.loadConfigTables(configSource);
+        // TODO review the generated test code and remove the default call to fail.
+        fail("The test case is a prototype.");
+    }
+
+    /**
+     * Test of getAuditTableSql method, of class GenericDMR.
+     */
+    @Test
+    public void testGetAuditTableSql() {
+        System.out.println("getAuditTableSql");
+        ConfigSource configSource = null;
+        String tableName = "";
+        GenericDMR instance = null;
+        String expResult = "";
+        String result = instance.getAuditTableSql(configSource, tableName);
+        assertEquals(expResult, result);
+        // TODO review the generated test code and remove the default call to fail.
+        fail("The test case is a prototype.");
+    }
+
+    /**
+     * Test of getNewAuditTableColumnMetaData method, of class GenericDMR.
+     */
+    @Test
+    public void testGetNewAuditTableColumnMetaData() {
+        System.out.println("getNewAuditTableColumnMetaData");
+        ConfigSource configSource = null;
+        String tableToAudit = "";
+        GenericDMR instance = null;
+        Map expResult = null;
+        Map result = instance.getNewAuditTableColumnMetaData(configSource, tableToAudit);
+        assertEquals(expResult, result);
+        // TODO review the generated test code and remove the default call to fail.
+        fail("The test case is a prototype.");
+    }
+
+    /**
+     * Test of getAuditTableCreateSql method, of class GenericDMR.
+     */
+    @Test
+    public void testGetAuditTableCreateSql() {
+        System.out.println("getAuditTableCreateSql");
+        ConfigSource configSource = null;
+        String tableName = "";
+        GenericDMR instance = null;
+        String expResult = "";
+        String result = instance.getAuditTableCreateSql(configSource, tableName);
+        assertEquals(expResult, result);
+        // TODO review the generated test code and remove the default call to fail.
+        fail("The test case is a prototype.");
+    }
+
+    /**
+     * Test of getAuditTableModifySql method, of class GenericDMR.
+     */
+    @Test
+    public void testGetAuditTableModifySql() {
+        System.out.println("getAuditTableModifySql");
+        ConfigSource configSource = null;
+        String tableName = "";
+        GenericDMR instance = null;
+        String expResult = "";
+        String result = instance.getAuditTableModifySql(configSource, tableName);
+        assertEquals(expResult, result);
+        // TODO review the generated test code and remove the default call to fail.
+        fail("The test case is a prototype.");
+    }
+    
+    
 }

@@ -17,7 +17,8 @@ public class TableConfig {
     Boolean hasInsertTrigger = true;
     Boolean hasUpdateTrigger = true;
     Boolean hasDeleteTrigger = true;
-    String tableName;
+    private String tableName;
+    IdentifierMetaData idMetaData;
     Map<String, Map<String,String>> columns; //column meta data
     
     /** excluded columns are represented in the audit table, but changes
@@ -27,9 +28,10 @@ public class TableConfig {
     HashSet<String> excludedColumns;
     HashSet<String> includedColumns;
 
-    TableConfig(String tableName){
+    TableConfig(String tableName, IdentifierMetaData idMetaData){
+       this.idMetaData = idMetaData;
        excludedColumns =  new HashSet<String>();
-       this.tableName = tableName;
+       this.tableName = idMetaData.convertId(tableName);
     }
 
     public Map<String, Map<String, String>> getColumns() {
@@ -41,7 +43,7 @@ public class TableConfig {
     }
     
     void addExcludedColumn(String columnName){
-        excludedColumns.add(columnName);
+        excludedColumns.add(idMetaData.convertId(columnName));
     }
     
     public HashSet<String> getExcludedColumns() {
@@ -49,7 +51,7 @@ public class TableConfig {
     }
         
     void addIncludedColumn(String columnName){
-        includedColumns.add(columnName);
+        includedColumns.add(idMetaData.convertId(columnName));
     }
     
     public HashSet<String> getIncludedColumns() {
@@ -76,13 +78,15 @@ public class TableConfig {
         return hasUpdateTrigger;
     }
 
-     void setHasUpdateTrigger(Boolean hasUpdateTrigger) {
+    void setHasUpdateTrigger(Boolean hasUpdateTrigger) {
         this.hasUpdateTrigger = hasUpdateTrigger;
     }
+
+    String getTableName() {
+        return tableName;
+    }
     
-    
-    
-    
-    
-    
+    void setTableName(String tableName) {
+        this.tableName = idMetaData.convertId(tableName);
+    }
 }

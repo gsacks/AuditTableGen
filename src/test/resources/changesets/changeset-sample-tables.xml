@@ -57,5 +57,36 @@
         </createTable>
         <addPrimaryKey tableName="address" constraintName="address_pk" columnNames="addressid"/>
         <addForeignKeyConstraint baseTableName="address" constraintName="fk_address_customer" baseColumnNames="customerid" referencedTableName="customer" referencedColumnNames="customerid"/>
+        <createTable tableName="zz_address">
+            <column name="zz_addressid" type="INTEGER" autoIncrement="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="addressid" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="customerid" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="address1" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="address2" type="VARCHAR(255)"/>
+            <column name="address3" type="VARCHAR(255)"/>
+            <column name="address4" type="VARCHAR(255)"/>
+            <column name="state" type="CHAR(2)"/>
+            <column name="zip" type="CHAR(9)"/>
+            <column name="insertts" type="TIMESTAMP"/>
+            <column name="insertuserid" type="INTEGER"/>
+            <column name="updatets" type="TIMESTAMP" defaultValueDate="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updateuserid" type="INTEGER"/>
+            <column name="deletedflag" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
  </changeSet>
 </databaseChangeLog>

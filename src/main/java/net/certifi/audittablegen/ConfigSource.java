@@ -5,7 +5,6 @@
 package net.certifi.audittablegen;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,34 +17,50 @@ public class ConfigSource {
     private static final Logger logger = LoggerFactory.getLogger(ConfigSource.class);
     
     Map<String, TableConfig> tablesConfig;
-    HashSet<String> existingAuditTables;
-    String tablePrefix = "zz_";
-    String tablePostfix = "";
-    String columnPrefix = "";
-    String columnPostfix = "";
+    Map<String, TableConfig> existingAuditTables;
+    private String tablePrefix = "zz_";
+    private String tablePostfix = "";
+    private String columnPrefix = "";
+    private String columnPostfix = "";
+    IdentifierMetaData idMetaData;
     
-    ConfigSource(){
+    ConfigSource(IdentifierMetaData idMetaData){
+        this.idMetaData = idMetaData;
         tablesConfig = new HashMap<String, TableConfig>();
-        existingAuditTables = new HashSet<String>();
+        existingAuditTables = new HashMap<String, TableConfig>();
     }
     
     void addExistingAuditTable (String auditTableName){
-        existingAuditTables.add(auditTableName);
-    }
-    
-    Boolean hasExistingAuditTable (String auditTableName){
-        return existingAuditTables.contains(auditTableName);
-    }
-    
-    void addTableConfig (String tableName){
         
-        if(tablesConfig.containsKey(tableName)){
+        String myAuditTableName = idMetaData.convertId(auditTableName);
+        if (existingAuditTables.containsKey(myAuditTableName)){
             //table already exists
             return;
         }
         else {
-            TableConfig tc = new TableConfig(tableName);
-            tablesConfig.put(tableName, tc);
+            TableConfig atc = new TableConfig(myAuditTableName, idMetaData);
+            existingAuditTables.put (myAuditTableName, atc);
+            return;
+        }
+
+    }
+    
+    Boolean hasExistingAuditTable (String auditTableName){
+        
+        String myAuditTableName = idMetaData.convertId(auditTableName);
+        return existingAuditTables.containsKey(myAuditTableName);
+    }
+    
+    void addTableConfig (String tableName){
+        
+        String myTableName = idMetaData.convertId(tableName);
+        if(tablesConfig.containsKey(myTableName)){
+            //table already exists
+            return;
+        }
+        else {
+            TableConfig tc = new TableConfig(myTableName, idMetaData);
+            tablesConfig.put(myTableName, tc);
             return;
         }
     }
@@ -58,15 +73,18 @@ public class ConfigSource {
     
         TableConfig tc;
         
-        if(tablesConfig.containsKey(tableName)){
-            tc = tablesConfig.get(tableName);
+        String myTableName = idMetaData.convertId(tableName);
+        String myColumnName = idMetaData.convertId(columnName);
+        
+        if(tablesConfig.containsKey(myTableName)){
+            tc = tablesConfig.get(myTableName);
         }
         else {
-            tc = new TableConfig(tableName);
-            tablesConfig.put(tableName, tc);
+            tc = new TableConfig(myTableName, idMetaData);
+            tablesConfig.put(myTableName, tc);
         }
         
-        tc.addExcludedColumn(columnName);
+        tc.addExcludedColumn(myColumnName);
         
     }
     
@@ -74,24 +92,30 @@ public class ConfigSource {
     
         TableConfig tc;
         
-        if(tablesConfig.containsKey(tableName)){
-            tc = tablesConfig.get(tableName);
+        String myTableName = idMetaData.convertId(tableName);
+        String myColumnName = idMetaData.convertId(columnName);
+        
+        if(tablesConfig.containsKey(myTableName)){
+            tc = tablesConfig.get(myTableName);
         }
         else {
-            tc = new TableConfig(tableName);
-            tablesConfig.put(tableName, tc);
+            tc = new TableConfig(myTableName, idMetaData);
+            tablesConfig.put(myTableName, tc);
         }
         
-        tc.addIncludedColumn(columnName);
+        tc.addIncludedColumn(myColumnName);
         
     }
 
     TableConfig getTableConfig (String tableName){
-        return tablesConfig.get(tableName);
+        
+        String myTableName = idMetaData.convertId(tableName);
+        
+        return tablesConfig.get(myTableName);
     }
     
     String getTablePostfix() {
-        return tablePostfix;
+        return idMetaData.convertId(tablePostfix);
     }
 
     void setTablePostfix(String tablePostfix) {
@@ -99,7 +123,7 @@ public class ConfigSource {
     }
 
     String getTablePrefix() {
-        return tablePrefix;
+        return idMetaData.convertId(tablePrefix);
     }
 
     void setTablePrefix(String tablePrefix) {
@@ -107,20 +131,23 @@ public class ConfigSource {
     }
 
     String getColumnPostfix() {
-        return columnPostfix;
+        return idMetaData.convertId(columnPostfix);
     }
 
+    //not supported - can wreak havok with table ids
     void setColumnPostfix(String columnPostfix) {
-        this.columnPostfix = columnPostfix;
+        this.columnPostfix = "";
+        //this.columnPostfix = columnPostfix;
     }
 
     String getColumnPrefix() {
-        return columnPrefix;
+        return idMetaData.convertId(columnPrefix);
     }
 
+    //not supported - can wreak havoc with table ids
     void setColumnPrefix(String columnPrefix) {
-        this.columnPrefix = columnPrefix;
+        this.columnPrefix = "";
+        //this.columnPrefix = columnPrefix;
     }
-    
     
 }

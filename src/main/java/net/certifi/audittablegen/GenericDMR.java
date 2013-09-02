@@ -7,9 +7,9 @@ package net.certifi.audittablegen;
 import com.google.common.base.Throwables;
 import java.sql.*;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
-import java.util.logging.Level;
 import javax.sql.DataSource;
 import org.apache.commons.dbcp.BasicDataSource;
 import org.slf4j.Logger;
@@ -26,8 +26,11 @@ class GenericDMR implements DataSourceDMR {
     DataSource dataSource;
     String databaseProduct;
     String targetSchema;
+    static String defaultAuditConfigTable = "auditconfig";
     String auditConfigTable;
     ConfigSource configSource;
+    IdentifierMetaData idMetaData;
+   
     
     /**
      * 
@@ -56,7 +59,17 @@ class GenericDMR implements DataSourceDMR {
         dmd = conn.getMetaData();
         targetSchema = schema;
         databaseProduct = dmd.getDatabaseProductName();
-        auditConfigTable = "auditconfig";
+        idMetaData = new IdentifierMetaData();
+
+        //ToDo: not contemplating quoted identifiers for now
+        idMetaData.setStoresLowerCaseIds(dmd.storesLowerCaseIdentifiers());
+        idMetaData.setStoresMixedCaseIds(dmd.storesMixedCaseIdentifiers());
+        idMetaData.setStoresUpperCaseIds(dmd.storesUpperCaseIdentifiers());
+        
+        configSource = new ConfigSource(idMetaData);
+
+        targetSchema = idMetaData.convertId(schema);
+        auditConfigTable = idMetaData.convertId(defaultAuditConfigTable);
 
         conn.close();
 
@@ -72,7 +85,7 @@ class GenericDMR implements DataSourceDMR {
             targetSchema = null;
         }
         else {
-            targetSchema = schema;
+            targetSchema = idMetaData.convertId(schema);
         }
         
     }
@@ -115,18 +128,19 @@ class GenericDMR implements DataSourceDMR {
         try {
             ResultSet rs;
             dmd = getConnection().getMetaData();
-            if (dmd.storesLowerCaseIdentifiers()){
-                rs = dmd.getTables(null, null == targetSchema ? null : targetSchema.toLowerCase(), auditConfigTable.toLowerCase(), null);
-                logger.debug("running lower case");
-            }
-            else if (dmd.storesMixedCaseIdentifiers()){
-                rs = dmd.getTables(null, null == targetSchema ? null : targetSchema, auditConfigTable, null);
-                logger.debug("running mixed case");
-            }
-            else {
-                rs = dmd.getTables(null, null == targetSchema ? null : targetSchema.toUpperCase(), auditConfigTable.toUpperCase(), null);
-                logger.debug("running upper case");
-            }
+            rs =  dmd.getTables(null, null == targetSchema ? null : targetSchema, auditConfigTable, null);
+//            if (dmd.storesLowerCaseIdentifiers()){
+//                rs = dmd.getTables(null, null == targetSchema ? null : targetSchema.toLowerCase(), auditConfigTable.toLowerCase(), null);
+//                logger.debug("running lower case");
+//            }
+//            else if (dmd.storesMixedCaseIdentifiers()){
+//                rs = dmd.getTables(null, null == targetSchema ? null : targetSchema, auditConfigTable, null);
+//                logger.debug("running mixed case");
+//            }
+//            else {
+//                rs = dmd.getTables(null, null == targetSchema ? null : targetSchema.toUpperCase(), auditConfigTable.toUpperCase(), null);
+//                logger.debug("running upper case");
+//            }
             
             while (rs.next()){
                 if (rs.getString("TABLE_NAME").equalsIgnoreCase(auditConfigTable)){
@@ -142,7 +156,7 @@ class GenericDMR implements DataSourceDMR {
             }
         }
         catch (SQLException e){
-            logger.error("SQL error retrieving audit configuration source: " + e.getMessage());
+            logger.error("SQL error retrieving audit configuration source: ", e);
             retval = false;
         }
         
@@ -173,8 +187,9 @@ class GenericDMR implements DataSourceDMR {
         try {
             return conn.getMetaData();
         } catch (SQLException ex) {
-            logger.error("Error getting metaData:", ex.getMessage());
-            return null;
+            logger.error("Error getting metaData: ", ex);
+            //return null;
+            throw Throwables.propagate(ex);
         }
         
     }
@@ -271,6 +286,12 @@ class GenericDMR implements DataSourceDMR {
              
     }
     
+    /**
+     * Load column metaData for all existing tables and audit tables
+     * in the targeted database/schema
+     * 
+     * @param configSource 
+     */
     void loadConfigTables (ConfigSource configSource){
      
         String table;
@@ -282,44 +303,32 @@ class GenericDMR implements DataSourceDMR {
             
             while (rs.next()){
                 table = rs.getString("TABLE_NAME").trim();
-                configSource.ensureTableConfig(table);
+                
+                //ToDo: handle case where table full name matches the prefix or postfix
+                if ( table.startsWith(configSource.getTablePrefix())
+                     && table.endsWith(configSource.getTablePostfix()) ){
+                    configSource.addExistingAuditTable(table);
+                }
+                else {
+                    configSource.ensureTableConfig(table);
+                }
             }
             
             dmd.getConnection().close();
             
         } catch (SQLException e){
-            logger.error("SQL error retrieving table list: " + e.getMessage());
+            logger.error("SQL error retrieving table list: ", e);
             return;
         }
         
+        //populate table meta data
         for ( Map.Entry <String, TableConfig> entry : configSource.tablesConfig.entrySet()){
             entry.getValue().columns = getColumnMetaDataForTable(entry.getKey());
         }
         
-        return;
- 
-    }
-    
-    void loadConfigAuditTables (ConfigSource configSource){
-     
-        String table;
-        
-        String tablePattern = configSource.tablePrefix + "%" + configSource.tablePostfix;
-        try {
-            
-            DatabaseMetaData dmd = getMetaData();
-            ResultSet rs = dmd.getTables(null, targetSchema, tablePattern, new String[]{"TABLE"});
-            
-            while (rs.next()){
-                table = rs.getString("TABLE_NAME").trim();
-                configSource.addExistingAuditTable(table);
-            }
-            
-            dmd.getConnection().close();
-            
-        } catch (SQLException e){
-            logger.error("SQL error retrieving table list: " + e.getMessage());
-            return;
+        //populate existing audit table meta data
+        for ( Map.Entry <String, TableConfig> entry : configSource.existingAuditTables.entrySet()){
+            entry.getValue().columns = getColumnMetaDataForTable(entry.getKey());
         }
         
         return;
@@ -331,12 +340,12 @@ class GenericDMR implements DataSourceDMR {
         String sql;
         
         String auditTableName =
-                configSource.tablePrefix
+                configSource.getTablePrefix()
                 + tableName
-                + configSource.tablePostfix;
+                + configSource.getTablePostfix();
         
         //check if table already exists
-        if (configSource.existingAuditTables.contains(auditTableName)){
+        if (configSource.existingAuditTables.containsKey(auditTableName)){
             sql = getAuditTableModifySql(configSource, tableName);
         }
         else {
@@ -378,13 +387,50 @@ class GenericDMR implements DataSourceDMR {
         
     }
     
+    Map getNewAuditTableColumnMetaData (ConfigSource configSource, String tableToAudit){
+        
+        TableConfig tc = configSource.getTableConfig(tableToAudit);
+        
+        Map<String, Map<String, String>> auditTableColumns = new HashMap<String, Map<String, String>>();
+        
+        for (Map.Entry<String, Map<String, String>> entry : tc.getColumns().entrySet() ){
+            
+            //ToDo: name this search look for regexp
+            if (!tc.excludedColumns.contains(entry.getKey())
+                || tc.includedColumns.contains(entry.getKey()) ){
+                //include this column in the audit table
+                String auditColumnName = configSource.getColumnPrefix()
+                        + entry.getKey() + configSource.getColumnPostfix();
+                Map auditColumnMetaData = new HashMap<String, String>();
+                
+                //copy metaData from primary table/column map to audit table/ciolumn map
+                for (Map.Entry<String, String> metaDataEntry : entry.getValue().entrySet() ){
+                    String metaDataKey = metaDataEntry.getKey();
+                    String metaDataValue = metaDataEntry.getValue();
+                    if (metaDataKey.equals("IS_AUTOINCREMENT")){
+                        metaDataValue="NO";
+                    }
+                    if (metaDataKey.equals("IS_GENERATEDCOLUMN")){
+                        metaDataValue="NO";
+                    }
+                    auditColumnMetaData.put(metaDataKey, metaDataValue);
+                }
+                
+                auditTableColumns.put(auditColumnName, auditColumnMetaData);
+            }
+            else {
+                logger.info("Table: %s  Column: %s excluded", tableToAudit, entry.getKey());                
+            }
+        }
+        
+        return auditTableColumns;
+        
+    }
+        
     String getAuditTableCreateSql(ConfigSource configSource, String tableName){
         
-        StringBuilder builder = new StringBuilder();
-        
-        TableConfig tc = configSource.getTableConfig(tableName);
-        
-        //TODO everything.
+                StringBuilder builder = new StringBuilder();
+               //TODO everything.
         
         
         return builder.toString();
