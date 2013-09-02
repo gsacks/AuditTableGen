@@ -8,6 +8,8 @@ import java.util.Map;
 import org.junit.*;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -19,8 +21,9 @@ public class ConfigSourceTest {
     IdentifierMetaData idMetaData = mock(IdentifierMetaData.class);
     ConfigSource configSource;
     
-    //Map<String, TableConfig> tablesConfig = (Map<String, TableConfig>) mock(Map.class);
-    //Map<String, TableConfig> existingAuditTables = (Map<String, TableConfig>) mock(Map.class);
+    Map<String, TableConfig> tablesConfig = (Map<String, TableConfig>) mock(Map.class);
+    Map<String, TableConfig> existingAuditTables = (Map<String, TableConfig>) mock(Map.class);
+    TableConfig tc = mock(TableConfig.class);
 
     
     public ConfigSourceTest() {    
@@ -37,8 +40,8 @@ public class ConfigSourceTest {
     @Before
     public void setUp() {
         configSource = new ConfigSource(idMetaData);
-        //configSource.tablesConfig = (Map<String, TableConfig>) mock(Map.class);
-        //configSource.existingAuditTables = (Map<String, TableConfig>) mock(Map.class);
+        configSource.tablesConfig = tablesConfig;
+        configSource.existingAuditTables = existingAuditTables;
         idMetaData.setStoresUpperCaseIds(true);
     }
     
@@ -54,9 +57,10 @@ public class ConfigSourceTest {
         System.out.println("addExistingAuditTable");
         String auditTableName = "zz_myTable";       
         when (idMetaData.convertId("zz_myTable")).thenReturn("ZZ_MYTABLE");
+        when (existingAuditTables.containsKey("ZZ_MYTABLE")).thenReturn(true);
         configSource.addExistingAuditTable(auditTableName);
-        assertEquals("ZZ_MYTABLE",idMetaData.convertId(auditTableName));
         boolean result = configSource.hasExistingAuditTable("zz_myTable");
+        verify (existingAuditTables).put(eq("ZZ_MYTABLE"), (TableConfig) anyObject());
         assertTrue(result);
     }
 
@@ -66,13 +70,10 @@ public class ConfigSourceTest {
     @Test
     public void testHasExistingAuditTable() {
         System.out.println("hasExistingAuditTable");
-        String auditTableName = "";
-        ConfigSource instance = null;
-        Boolean expResult = null;
-        Boolean result = instance.hasExistingAuditTable(auditTableName);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        String auditTableName = "zz_myTable";
+        when (idMetaData.convertId("zz_myTable")).thenReturn("zz_mytable");
+        configSource.hasExistingAuditTable(auditTableName);
+        verify (existingAuditTables).containsKey("zz_mytable");
     }
 
     /**
@@ -81,11 +82,19 @@ public class ConfigSourceTest {
     @Test
     public void testAddTableConfig() {
         System.out.println("addTableConfig");
-        String tableName = "";
-        ConfigSource instance = null;
-        instance.addTableConfig(tableName);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        String tableName = "myTable";
+        String tableName2 = "myOtherTable";
+        when (idMetaData.convertId("myTable")).thenReturn("MYTABLE");
+        when (tablesConfig.containsKey("MYTABLE")).thenReturn(false);
+        when (idMetaData.convertId("myOtherTable")).thenReturn("MYOTHERTABLE");
+        
+        configSource.addTableConfig(tableName);
+        verify (tablesConfig).put(eq("MYTABLE"), (TableConfig) anyObject());
+        
+        when (idMetaData.convertId("myOtherTable")).thenReturn("MYOTHERTABLE");
+        when (tablesConfig.containsKey("MYOTHERTABLE")).thenReturn(true);
+        configSource.addTableConfig(tableName2);
+        verify (tablesConfig, times(0)).put(eq("MYOTHERTABLE"), (TableConfig) anyObject());
     }
 
     /**
@@ -93,12 +102,22 @@ public class ConfigSourceTest {
      */
     @Test
     public void testEnsureTableConfig() {
+        
         System.out.println("ensureTableConfig");
-        String tableName = "";
-        ConfigSource instance = null;
-        instance.ensureTableConfig(tableName);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        String tableName = "myTable";
+        String tableName2 = "myOtherTable";
+        when (idMetaData.convertId("myTable")).thenReturn("MYTABLE");
+        when (tablesConfig.containsKey("MYTABLE")).thenReturn(false);
+        when (idMetaData.convertId("myOtherTable")).thenReturn("MYOTHERTABLE");
+        
+        configSource.ensureTableConfig(tableName);
+        verify (tablesConfig).put(eq("MYTABLE"), (TableConfig) anyObject());
+        
+        when (idMetaData.convertId("myOtherTable")).thenReturn("MYOTHERTABLE");
+        when (tablesConfig.containsKey("MYOTHERTABLE")).thenReturn(true);
+        configSource.ensureTableConfig(tableName2);
+        verify (tablesConfig, times(0)).put(eq("MYOTHERTABLE"), (TableConfig) anyObject());
+
     }
 
     /**
@@ -107,12 +126,20 @@ public class ConfigSourceTest {
     @Test
     public void testAddExcludedColumn() {
         System.out.println("addExcludedColumn");
-        String tableName = "";
-        String columnName = "";
-        ConfigSource instance = null;
-        instance.addExcludedColumn(tableName, columnName);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        String tableName = "mytable";
+        String columnName = "mycolumn";
+        
+        when(idMetaData.convertId(anyString())).thenAnswer(new Answer<String>() {
+            @Override
+            public String answer(InvocationOnMock invocation) throws Throwable {
+                Object[] args = invocation.getArguments();
+                return (String) args[0];
+            }
+        });
+        when (tablesConfig.containsKey(tableName)).thenReturn(true);
+        configSource.addExcludedColumn(tableName, columnName);
+        verify (tablesConfig, times(1)).get(eq("mytable"));
+
     }
 
     /**
