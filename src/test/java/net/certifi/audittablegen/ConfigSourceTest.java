@@ -55,13 +55,25 @@ public class ConfigSourceTest {
     @Test
     public void testAddExistingAuditTable() {
         System.out.println("addExistingAuditTable");
-        String auditTableName = "zz_myTable";       
-        when (idMetaData.convertId("zz_myTable")).thenReturn("ZZ_MYTABLE");
-        when (existingAuditTables.containsKey("ZZ_MYTABLE")).thenReturn(true);
-        configSource.addExistingAuditTable(auditTableName);
-        boolean result = configSource.hasExistingAuditTable("zz_myTable");
-        verify (existingAuditTables).put(eq("ZZ_MYTABLE"), (TableConfig) anyObject());
-        assertTrue(result);
+        String auditTableName = "zz_myTable";
+        String auditTableName2 = "zz_myOtherTable";
+        
+        when(idMetaData.convertId(anyString())).thenAnswer(new Answer<String>() {
+            @Override
+            public String answer(InvocationOnMock invocation) throws Throwable {
+                Object[] args = invocation.getArguments();
+                return (String) args[0];
+            }
+        });
+        when (existingAuditTables.containsKey(auditTableName)).thenReturn(true);
+        when (existingAuditTables.containsKey(auditTableName2)).thenReturn(false);
+       configSource.addExistingAuditTable(auditTableName);
+       configSource.addExistingAuditTable(auditTableName2);
+        //boolean result1 = configSource.hasExistingAuditTable(auditTableName);
+        //boolean result2 = configSource.hasExistingAuditTable(auditTableName2);
+        verify (existingAuditTables).put(eq(auditTableName2), (TableConfig) anyObject());
+        verify (existingAuditTables, times(0)).put(eq(auditTableName), (TableConfig) anyObject());
+
     }
 
     /**
@@ -71,9 +83,22 @@ public class ConfigSourceTest {
     public void testHasExistingAuditTable() {
         System.out.println("hasExistingAuditTable");
         String auditTableName = "zz_myTable";
-        when (idMetaData.convertId("zz_myTable")).thenReturn("zz_mytable");
-        configSource.hasExistingAuditTable(auditTableName);
-        verify (existingAuditTables).containsKey("zz_mytable");
+        String auditTableName2 = "zz_myOtherTable";
+
+        when(idMetaData.convertId(anyString())).thenAnswer(new Answer<String>() {
+            @Override
+            public String answer(InvocationOnMock invocation) throws Throwable {
+                Object[] args = invocation.getArguments();
+                return (String) args[0];
+            }
+        });
+        
+        when (existingAuditTables.containsKey(auditTableName)).thenReturn(true);
+        when (existingAuditTables.containsKey(auditTableName2)).thenReturn(false);
+        boolean result1 = configSource.hasExistingAuditTable(auditTableName);
+        boolean result2 = configSource.hasExistingAuditTable(auditTableName2);
+        assertTrue(result1);
+        assertFalse(result2);
     }
 
     /**
@@ -127,6 +152,7 @@ public class ConfigSourceTest {
     public void testAddExcludedColumn() {
         System.out.println("addExcludedColumn");
         String tableName = "mytable";
+        String tableNotHere = "myothertable";
         String columnName = "mycolumn";
         
         when(idMetaData.convertId(anyString())).thenAnswer(new Answer<String>() {
@@ -136,10 +162,17 @@ public class ConfigSourceTest {
                 return (String) args[0];
             }
         });
+        //test 1 - already exists in map
         when (tablesConfig.containsKey(tableName)).thenReturn(true);
+        when (tablesConfig.get(tableName)).thenReturn(mock(TableConfig.class));
         configSource.addExcludedColumn(tableName, columnName);
-        verify (tablesConfig, times(1)).get(eq("mytable"));
-
+        verify (tablesConfig, times(1)).get(eq(tableName));
+        
+        //test 2 - does not exist in map
+        when (tablesConfig.containsKey(tableNotHere)).thenReturn(false);
+        configSource.addExcludedColumn(tableNotHere, columnName);
+        verify (tablesConfig, times(1)).put(eq(tableNotHere), (TableConfig) anyObject());
+        
     }
 
     /**
@@ -148,12 +181,27 @@ public class ConfigSourceTest {
     @Test
     public void testAddIncludedColumn() {
         System.out.println("addIncludedColumn");
-        String tableName = "";
-        String columnName = "";
-        ConfigSource instance = null;
-        instance.addIncludedColumn(tableName, columnName);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        String tableName = "mytable";
+        String tableNotHere = "myothertable";
+        String columnName = "mycolumn";
+        
+        when(idMetaData.convertId(anyString())).thenAnswer(new Answer<String>() {
+            @Override
+            public String answer(InvocationOnMock invocation) throws Throwable {
+                Object[] args = invocation.getArguments();
+                return (String) args[0];
+            }
+        });
+        //test 1 - already exists in map
+        when (tablesConfig.containsKey(tableName)).thenReturn(true);
+        when (tablesConfig.get(tableName)).thenReturn(mock(TableConfig.class));
+        configSource.addIncludedColumn(tableName, columnName);
+        verify (tablesConfig, times(1)).get(eq(tableName));
+        
+        //test 2 - does not exist in map
+        when (tablesConfig.containsKey(tableNotHere)).thenReturn(false);
+        configSource.addIncludedColumn(tableNotHere, columnName);
+        verify (tablesConfig, times(1)).put(eq(tableNotHere), (TableConfig) anyObject());
     }
 
     /**
@@ -162,13 +210,18 @@ public class ConfigSourceTest {
     @Test
     public void testGetTableConfig() {
         System.out.println("getTableConfig");
-        String tableName = "";
-        ConfigSource instance = null;
-        TableConfig expResult = null;
-        TableConfig result = instance.getTableConfig(tableName);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        when(idMetaData.convertId(anyString())).thenAnswer(new Answer<String>() {
+            @Override
+            public String answer(InvocationOnMock invocation) throws Throwable {
+                Object[] args = invocation.getArguments();
+                return (String) args[0];
+            }
+        });
+        
+        String tableName = "mytable";
+        when (tablesConfig.get(tableName)).thenReturn(mock(TableConfig.class));
+        TableConfig result = configSource.getTableConfig(tableName);
+        assertNotNull(result);
     }
 
     /**
@@ -177,12 +230,18 @@ public class ConfigSourceTest {
     @Test
     public void testGetTablePostfix() {
         System.out.println("getTablePostfix");
-        ConfigSource instance = null;
-        String expResult = "";
-        String result = instance.getTablePostfix();
+        when(idMetaData.convertId(anyString())).thenAnswer(new Answer<String>() {
+            @Override
+            public String answer(InvocationOnMock invocation) throws Throwable {
+                Object[] args = invocation.getArguments();
+                return (String) args[0];
+            }
+        });
+        
+        configSource.setTablePostfix("postfix");
+        String expResult = "postfix";
+        String result = configSource.getTablePostfix();
         assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
     }
 
     /**
@@ -191,11 +250,9 @@ public class ConfigSourceTest {
     @Test
     public void testSetTablePostfix() {
         System.out.println("setTablePostfix");
-        String tablePostfix = "";
-        ConfigSource instance = null;
-        instance.setTablePostfix(tablePostfix);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+      
+        //nothing to do here.  The test is in the getter
+        assertTrue(true);
     }
 
     /**
@@ -204,12 +261,18 @@ public class ConfigSourceTest {
     @Test
     public void testGetTablePrefix() {
         System.out.println("getTablePrefix");
-        ConfigSource instance = null;
-        String expResult = "";
-        String result = instance.getTablePrefix();
+        when(idMetaData.convertId(anyString())).thenAnswer(new Answer<String>() {
+            @Override
+            public String answer(InvocationOnMock invocation) throws Throwable {
+                Object[] args = invocation.getArguments();
+                return (String) args[0];
+            }
+        });
+        
+        configSource.setTablePrefix("prefix");
+        String expResult = "prefix";
+        String result = configSource.getTablePrefix();
         assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
     }
 
     /**
@@ -218,11 +281,9 @@ public class ConfigSourceTest {
     @Test
     public void testSetTablePrefix() {
         System.out.println("setTablePrefix");
-        String tablePrefix = "";
-        ConfigSource instance = null;
-        instance.setTablePrefix(tablePrefix);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+       
+        //nothing to do here.  The test is in the getter
+        assertTrue(true);
     }
 
     /**
@@ -231,12 +292,19 @@ public class ConfigSourceTest {
     @Test
     public void testGetColumnPostfix() {
         System.out.println("getColumnPostfix");
-        ConfigSource instance = null;
+        when(idMetaData.convertId(anyString())).thenAnswer(new Answer<String>() {
+            @Override
+            public String answer(InvocationOnMock invocation) throws Throwable {
+                Object[] args = invocation.getArguments();
+                return (String) args[0];
+            }
+        });        
+        
+        //expected result is empty string because column postfix is disabled
+        configSource.setColumnPostfix("postfix");
         String expResult = "";
-        String result = instance.getColumnPostfix();
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        String result = configSource.getColumnPostfix();
+        assertEquals(expResult, result);       
     }
 
     /**
@@ -245,11 +313,9 @@ public class ConfigSourceTest {
     @Test
     public void testSetColumnPostfix() {
         System.out.println("setColumnPostfix");
-        String columnPostfix = "";
-        ConfigSource instance = null;
-        instance.setColumnPostfix(columnPostfix);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        
+        //nothing to do here.  The test is in the getter
+        assertTrue(true);
     }
 
     /**
@@ -258,12 +324,19 @@ public class ConfigSourceTest {
     @Test
     public void testGetColumnPrefix() {
         System.out.println("getColumnPrefix");
-        ConfigSource instance = null;
+        when(idMetaData.convertId(anyString())).thenAnswer(new Answer<String>() {
+            @Override
+            public String answer(InvocationOnMock invocation) throws Throwable {
+                Object[] args = invocation.getArguments();
+                return (String) args[0];
+            }
+        });
+        
+        //expected result is empty string because column prefix is disabled
+        configSource.setColumnPrefix("prefix");
         String expResult = "";
-        String result = instance.getColumnPrefix();
+        String result = configSource.getColumnPrefix();
         assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
     }
 
     /**
@@ -272,10 +345,8 @@ public class ConfigSourceTest {
     @Test
     public void testSetColumnPrefix() {
         System.out.println("setColumnPrefix");
-        String columnPrefix = "";
-        ConfigSource instance = null;
-        instance.setColumnPrefix(columnPrefix);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+       
+        //nothing to do here.  The test is in the getter
+        assertTrue(true);
     }
 }

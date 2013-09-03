@@ -30,7 +30,8 @@ public class TableConfig {
 
     TableConfig(String tableName, IdentifierMetaData idMetaData){
        this.idMetaData = idMetaData;
-       excludedColumns =  new HashSet<String>();
+       excludedColumns = new HashSet<String>();
+       includedColumns = new HashSet<String>();
        this.tableName = idMetaData.convertId(tableName);
     }
 
