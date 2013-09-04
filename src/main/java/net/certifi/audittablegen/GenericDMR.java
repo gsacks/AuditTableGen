@@ -25,9 +25,10 @@ class GenericDMR implements DataSourceDMR {
     
     DataSource dataSource;
     String databaseProduct;
-    String targetSchema;
-    static String defaultAuditConfigTable = "auditconfig";
-    String auditConfigTable;
+    String unverifiedSchema;
+    String verifiedSchema;
+    String unverifiedAuditConfigTable = "auditconfig";
+    String verifiedAuditConfigTable;
     ConfigSource configSource;
     IdentifierMetaData idMetaData;
    
@@ -57,7 +58,6 @@ class GenericDMR implements DataSourceDMR {
         Connection conn = ds.getConnection();
         DatabaseMetaData dmd;
         dmd = conn.getMetaData();
-        targetSchema = schema;
         databaseProduct = dmd.getDatabaseProductName();
         idMetaData = new IdentifierMetaData();
 
@@ -65,29 +65,12 @@ class GenericDMR implements DataSourceDMR {
         idMetaData.setStoresLowerCaseIds(dmd.storesLowerCaseIdentifiers());
         idMetaData.setStoresMixedCaseIds(dmd.storesMixedCaseIdentifiers());
         idMetaData.setStoresUpperCaseIds(dmd.storesUpperCaseIdentifiers());
-        
-        configSource = new ConfigSource(idMetaData);
 
-        targetSchema = idMetaData.convertId(schema);
-        auditConfigTable = idMetaData.convertId(defaultAuditConfigTable);
+        unverifiedSchema = schema;
+        configSource = new ConfigSource(idMetaData);
 
         conn.close();
 
-    }
-
-    /**
-     * Set the schema to perform operations upon.
-     * 
-     * @param schema 
-     */
-    void setSchemaName (String schema){
-        if (schema == null){
-            targetSchema = null;
-        }
-        else {
-            targetSchema = idMetaData.convertId(schema);
-        }
-        
     }
     
     /**
@@ -120,88 +103,21 @@ class GenericDMR implements DataSourceDMR {
      * 
      * @return 
      */
+    @Override
     public Boolean hasConfigSource (){
         
-        Boolean retval = false;
-        DatabaseMetaData dmd;
-        
-        try {
-            ResultSet rs;
-            dmd = getConnection().getMetaData();
-            rs =  dmd.getTables(null, null == targetSchema ? null : targetSchema, auditConfigTable, null);
-//            if (dmd.storesLowerCaseIdentifiers()){
-//                rs = dmd.getTables(null, null == targetSchema ? null : targetSchema.toLowerCase(), auditConfigTable.toLowerCase(), null);
-//                logger.debug("running lower case");
-//            }
-//            else if (dmd.storesMixedCaseIdentifiers()){
-//                rs = dmd.getTables(null, null == targetSchema ? null : targetSchema, auditConfigTable, null);
-//                logger.debug("running mixed case");
-//            }
-//            else {
-//                rs = dmd.getTables(null, null == targetSchema ? null : targetSchema.toUpperCase(), auditConfigTable.toUpperCase(), null);
-//                logger.debug("running upper case");
-//            }
-            
-            while (rs.next()){
-                if (rs.getString("TABLE_NAME").equalsIgnoreCase(auditConfigTable)){
-                    //do something
-                    logger.info ("Audit Configuration Found");
-                    retval = true;
-                }
-            }
-            dmd.getConnection().close();
-            
-            if (!retval){
-                logger.debug("Audit configuration source not found");
-            }
-        }
-        catch (SQLException e){
-            logger.error("SQL error retrieving audit configuration source: ", e);
-            retval = false;
-        }
-        
-        return retval;
+        return ( (getAuditConfigTable() != null) ? true : false );
         
     }
-
-    Connection getConnection(){
-        
-        try {
-            Connection conn = dataSource.getConnection();
-            if (!targetSchema.isEmpty()){
-                conn.setSchema(targetSchema);
-            }
-            return conn;
-        } catch (SQLException ex) {
-            logger.error("Error getting connection:", ex);
-            //return null;
-            throw Throwables.propagate(ex);
-        }
-        
-    }
-    
-    //This does keep an open connection.  Calling method should close it.
-    DatabaseMetaData getMetaData(){
-        
-        Connection conn = getConnection();
-        try {
-            return conn.getMetaData();
-        } catch (SQLException ex) {
-            logger.error("Error getting metaData: ", ex);
-            //return null;
-            throw Throwables.propagate(ex);
-        }
-        
-    }
-    
+   
     void loadConfigAttributes(ConfigSource configSource){
         
         StringBuilder builder = new StringBuilder();
-        builder.append("select attribute, table, column, value from ").append(auditConfigTable);
+        builder.append("select attribute, table, column, value from ").append(verifiedAuditConfigTable);
                 
         try {
             
-            Connection conn = this.getConnection();
+            Connection conn = dataSource.getConnection();
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(builder.toString());
             String table;
@@ -296,10 +212,10 @@ class GenericDMR implements DataSourceDMR {
      
         String table;
         
-        try {
+        try (Connection conn = dataSource.getConnection()){
             
-            DatabaseMetaData dmd = getMetaData();
-            ResultSet rs = dmd.getTables(null, targetSchema, null, new String[]{"TABLE"});
+            DatabaseMetaData dmd = conn.getMetaData();
+            ResultSet rs = dmd.getTables(null, verifiedSchema, null, new String[]{"TABLE"});
             
             while (rs.next()){
                 table = rs.getString("TABLE_NAME").trim();
@@ -360,15 +276,16 @@ class GenericDMR implements DataSourceDMR {
         Map columns = new HashMap<String, HashMap<String, String>>();
         
         try {
-            DatabaseMetaData dmd = getConnection().getMetaData();
-            ResultSet rs = dmd.getColumns(null, targetSchema, tableName, null);
+            Connection conn = dataSource.getConnection();
+            DatabaseMetaData dmd = conn.getMetaData();
+            ResultSet rs = dmd.getColumns(null, verifiedSchema, tableName, null);
             
             //load all of the metadata in the result set into a map for each column
             
             ResultSetMetaData rsmd = rs.getMetaData();
             int metaDataColumnCount = rsmd.getColumnCount();
             if (! rs.isBeforeFirst()) {
-                throw new RuntimeException("No results for DatabaseMetaData.getColumns(" + targetSchema + "." + tableName + ")");
+                throw new RuntimeException("No results for DatabaseMetaData.getColumns(" + verifiedSchema + "." + tableName + ")");
             }
             while (rs.next()){
                 Map columnMetaData = new HashMap<String, String>();
@@ -446,5 +363,98 @@ class GenericDMR implements DataSourceDMR {
         
         
         return builder.toString();
+    }
+
+    @Override
+    public void setSchema(String unverifiedSchema) {
+
+        this.unverifiedSchema = unverifiedSchema;
+        this.verifiedSchema = null;
+        
+        if(unverifiedSchema == null){
+            return;
+        }
+        
+        try (Connection conn = dataSource.getConnection()){
+
+            DatabaseMetaData dmd = conn.getMetaData();
+            ResultSet rs = dmd.getSchemas();
+            while (rs.next()) {
+                if (rs.getString("TABLE_SCHEM").trim().equalsIgnoreCase(unverifiedSchema)) {
+                    //store value with whatever case sensitivity it is returned as
+                    verifiedSchema = rs.getString("TABLE_SCHEM").trim();
+                }
+            }
+            rs.close();
+        } catch (SQLException e) {
+            logger.error("error verifying schema", e);
+        }
+    }
+    
+    @Override
+    public String getSchema() {
+
+        if (verifiedSchema == null
+                && unverifiedSchema != null) {
+            setSchema(unverifiedSchema);
+        }
+
+        return verifiedSchema;
+    }
+    
+    @Override
+    public void setAuditConfigTable (String unverifiedTable){
+        
+        this.unverifiedAuditConfigTable = unverifiedTable;
+        this.verifiedAuditConfigTable = null;
+        String candidate = null;
+        boolean multiMatch = false;
+        
+        if(unverifiedAuditConfigTable == null){
+            return;
+        }
+        
+        if (null == verifiedSchema){
+            logger.error("attempting to verify auditConfigTable with unverified schema");
+        }
+        
+        try (Connection conn = dataSource.getConnection()){
+
+            DatabaseMetaData dmd = conn.getMetaData();
+            ResultSet rs = dmd.getTables(null, null == verifiedSchema ? null : verifiedSchema, null, null);
+            while (rs.next()) {
+                if (rs.getString("TABLE_NAME").trim().equalsIgnoreCase(unverifiedTable)) {
+                    //store value with whatever case sensitivity it is returned as
+                    if (candidate == null){
+                    candidate = rs.getString("TABLE_NAME").trim();
+                    }
+                    else{
+                        multiMatch = true;
+                    }
+                }
+            }
+            rs.close();
+        } catch (SQLException e) {
+            logger.error("error verifying auditConfigTable", e);
+        }
+        
+        /** Fails to set verified value if more than one match.
+         * This can occur if schema is not set and there are multiple
+         * tables in different schemas matching the table name.
+         */
+        if (!multiMatch){
+            this.verifiedAuditConfigTable = candidate;
+        }
+        
+    }
+    
+    @Override
+    public String getAuditConfigTable(){
+         if (verifiedAuditConfigTable == null
+                && unverifiedAuditConfigTable != null) {
+            setAuditConfigTable(unverifiedAuditConfigTable);
+        }
+
+        return verifiedAuditConfigTable;
     }
 }

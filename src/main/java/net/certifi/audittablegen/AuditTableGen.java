@@ -18,9 +18,6 @@ public class AuditTableGen {
 
     private static final Logger logger = LoggerFactory.getLogger(AuditTableGen.class);
     DataSource dataSource;
-    Properties connectionProperties;
-    Connection connection;
-    DatabaseMetaData dmd;
     DataSourceDMR dmr;
     String driver;
     String catalog;
@@ -32,25 +29,31 @@ public class AuditTableGen {
      * @param dataSource
      * @throws SQLException
      */
-    AuditTableGen(DataSource dataSource, String targetSchema) throws SQLException {
-
+    AuditTableGen(DataSource dataSource, String targetSchema){
+        
         this.dataSource = dataSource;
-        this.openConnection();
+        this.schema = targetSchema;
+        
+    }
+    
+    void initialize()throws SQLException {
+
+        Connection connection = dataSource.getConnection();
+        //Properties connectionProperties = connection.getClientInfo();
+        DatabaseMetaData dmd = connection.getMetaData();
         
         logger.debug("DatabaseProduct: {}", dmd.getDatabaseProductName());
 
         try {
             catalog = connection.getCatalog();
 
-            if (targetSchema.isEmpty() || targetSchema == null) {
+            if (schema.isEmpty() || schema == null) {
                 try {
                     schema = connection.getSchema();
                 } catch (AbstractMethodError e) {
-                    logger.error("Abstract method getSchema() not implemented");
+                    logger.error("Abstract method getSchema() not implemented", e);
                     schema = "";
                 }
-            } else {
-                schema = targetSchema;
             }
         } catch (SQLException e) {
             logger.error("Error getting catalog/schema", e);
@@ -71,28 +74,11 @@ public class AuditTableGen {
         }
 
     }
-
-    void openConnection() throws SQLException {
-        
-        //do stuff
-        closeConnection();
-        connection = dataSource.getConnection();
-        connectionProperties = connection.getClientInfo();
-        dmd = connection.getMetaData();
-        dmd.getDriverMajorVersion();
-        dmd.getDriverMinorVersion();
-        dmd.getDriverName();
-        dmd.getDriverVersion();
-        
-    }
-    
-    void closeConnection() throws SQLException {
-        connection.close();
-        dmd = null;
-    }
     
     String getDataSourceInfo() throws SQLException {
 
+        Connection conn = dataSource.getConnection();
+        DatabaseMetaData dmd = conn.getMetaData();
         StringBuilder s = new StringBuilder();
 
         s.append("Driver Name: ").append(dmd.getDriverName())
@@ -124,7 +110,10 @@ public class AuditTableGen {
        if (dmr.hasConfigSource()){
            s.append("Has auditConfigSource table").append(System.lineSeparator());
        }
-        return s.toString();
+       
+       conn.close();
+       
+       return s.toString();
 
     }
 

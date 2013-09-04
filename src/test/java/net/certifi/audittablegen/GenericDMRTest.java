@@ -87,19 +87,6 @@ public class GenericDMRTest {
     }
 
     /**
-     * Test of setSchemaName method, of class GenericDMR.
-     */
-    @Test
-    public void testSetSchemaName() {
-        System.out.println("setSchemaName");
-        String schema = "PUBLIC";
-        GenericDMR instance = dmr;
-        instance.setSchemaName(schema);
-        instance.getConnection();
-        assertEquals(instance.targetSchema, schema);       
-    }
-
-    /**
      * Test of getRunTimeDataSource method, of class GenericDMR.
      */
     @Test
@@ -114,12 +101,18 @@ public class GenericDMRTest {
      * Test of hasConfigSource method, of class GenericDMR.
      */
     @Test
-    public void testLoadConfigSource() {
+    public void testHasConfigSource() {
         System.out.println("loadConfigSource");
 
-        Boolean expResult = true;
+        //test the default values (should pass)
         Boolean result = dmr.hasConfigSource();
-        assertEquals(expResult, result);
+        assertTrue(result);
+        
+        //test another value (should fail)
+        dmr.unverifiedAuditConfigTable = "not_here";
+        dmr.verifiedAuditConfigTable = null;
+        result = dmr.hasConfigSource();
+        assertFalse(result);
     }
     
     @Test
@@ -133,48 +126,6 @@ public class GenericDMRTest {
         }
         
         logger.debug("");
-    }
-
-    /**
-     * Test of hasConfigSource method, of class GenericDMR.
-     */
-    @Test
-    public void testHasConfigSource() {
-        System.out.println("hasConfigSource");
-        GenericDMR instance = null;
-        Boolean expResult = null;
-        Boolean result = instance.hasConfigSource();
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
-    }
-
-    /**
-     * Test of getConnection method, of class GenericDMR.
-     */
-    @Test
-    public void testGetConnection() {
-        System.out.println("getConnection");
-        GenericDMR instance = null;
-        Connection expResult = null;
-        Connection result = instance.getConnection();
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
-    }
-
-    /**
-     * Test of getMetaData method, of class GenericDMR.
-     */
-    @Test
-    public void testGetMetaData() {
-        System.out.println("getMetaData");
-        GenericDMR instance = null;
-        DatabaseMetaData expResult = null;
-        DatabaseMetaData result = instance.getMetaData();
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
     }
 
     /**
@@ -265,6 +216,59 @@ public class GenericDMRTest {
         assertEquals(expResult, result);
         // TODO review the generated test code and remove the default call to fail.
         fail("The test case is a prototype.");
+    }
+
+    /**
+     * Test of setSchema method, of class GenericDMR.
+     */
+    @Test
+    public void testSetSchema() {
+        System.out.println("setSchema");
+        String unverifiedSchema = "Public";
+        dmr.verifiedSchema = null;
+        dmr.setSchema(unverifiedSchema);
+
+        assertEquals(dmr.unverifiedSchema, unverifiedSchema);
+        assertNotNull(dmr.verifiedSchema);
+    }
+
+    /**
+     * Test of getSchema method, of class GenericDMR.
+     */
+    @Test
+    public void testGetSchema() {
+        System.out.println("getSchema");
+        dmr.unverifiedSchema = "pUbLiC";
+        String expResult = "PUBLIC";
+        String result = dmr.getSchema();
+        assertEquals(expResult, result);
+    }
+
+    /**
+     * Test of setAuditConfigTable method, of class GenericDMR.
+     */
+    @Test
+    public void testSetAuditConfigTable() {
+        System.out.println("setAuditConfigTable");
+
+        String unverifiedAuditConfigTable = "AuDitCONfig";
+        dmr.verifiedAuditConfigTable = null;
+        dmr.setAuditConfigTable(unverifiedAuditConfigTable);
+
+        assertEquals(dmr.unverifiedAuditConfigTable, unverifiedAuditConfigTable);
+        assertNotNull(dmr.verifiedAuditConfigTable);       
+    }
+
+    /**
+     * Test of getAuditConfigTable method, of class GenericDMR.
+     */
+    @Test
+    public void testGetAuditConfigTable() {
+        System.out.println("getAuditConfigTable");
+        dmr.unverifiedAuditConfigTable = "auditCONFIG";
+        String expResult = "AUDITCONFIG";
+        String result = dmr.getAuditConfigTable();
+        assertEquals(expResult, result);
     }
     
     

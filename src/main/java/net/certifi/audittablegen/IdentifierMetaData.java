@@ -49,17 +49,25 @@ public class IdentifierMetaData {
             this.storesMixedCaseIds = false;
         }
     }
-    
+    /**
+     * This method does not do anything anymore.
+     * It returns the same string passed into the parameter.
+     * 
+     * @param identifier
+     * @return 
+     */
     String convertId (String identifier){
-        if (storesLowerCaseIds){
-            return identifier.toLowerCase();
-        }
-        else if (storesUpperCaseIds){
-            return identifier.toUpperCase();
-        }
-        else {
-            return identifier;
-        }
+  
+        return identifier;
+//        if (storesLowerCaseIds){
+//            return identifier.toLowerCase();
+//        }
+//        else if (storesUpperCaseIds){
+//            return identifier.toUpperCase();
+//        }
+//        else {
+//            return identifier;
+//        }
     }
     
 }

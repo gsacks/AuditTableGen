@@ -11,7 +11,10 @@ package net.certifi.audittablegen;
  */
 public interface DataSourceDMR {
     
-    //boolean validateConnection ();
     Boolean hasConfigSource ();
+    void setSchema(String schema);
+    String getSchema();
+    void setAuditConfigTable(String table);
+    String getAuditConfigTable();
     
 }
