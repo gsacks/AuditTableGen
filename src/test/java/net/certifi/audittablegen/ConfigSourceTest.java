@@ -109,17 +109,17 @@ public class ConfigSourceTest {
         System.out.println("addTableConfig");
         String tableName = "myTable";
         String tableName2 = "myOtherTable";
-        when (idMetaData.convertId("myTable")).thenReturn("MYTABLE");
-        when (tablesConfig.containsKey("MYTABLE")).thenReturn(false);
-        when (idMetaData.convertId("myOtherTable")).thenReturn("MYOTHERTABLE");
+        //when (idMetaData.convertId("myTable")).thenReturn("MYTABLE");
+        when (tablesConfig.containsKey("myTable")).thenReturn(false);
+        //when (idMetaData.convertId("myOtherTable")).thenReturn("MYOTHERTABLE");
         
         configSource.addTableConfig(tableName);
-        verify (tablesConfig).put(eq("MYTABLE"), (TableConfig) anyObject());
+        verify (tablesConfig).put(eq("myTable"), (TableConfig) anyObject());
         
-        when (idMetaData.convertId("myOtherTable")).thenReturn("MYOTHERTABLE");
-        when (tablesConfig.containsKey("MYOTHERTABLE")).thenReturn(true);
+        //when (idMetaData.convertId("myOtherTable")).thenReturn("MYOTHERTABLE");
+        when (tablesConfig.containsKey("myOtherTable")).thenReturn(true);
         configSource.addTableConfig(tableName2);
-        verify (tablesConfig, times(0)).put(eq("MYOTHERTABLE"), (TableConfig) anyObject());
+        verify (tablesConfig, times(0)).put(eq("myOtherTable"), (TableConfig) anyObject());
     }
 
     /**
@@ -131,17 +131,17 @@ public class ConfigSourceTest {
         System.out.println("ensureTableConfig");
         String tableName = "myTable";
         String tableName2 = "myOtherTable";
-        when (idMetaData.convertId("myTable")).thenReturn("MYTABLE");
-        when (tablesConfig.containsKey("MYTABLE")).thenReturn(false);
-        when (idMetaData.convertId("myOtherTable")).thenReturn("MYOTHERTABLE");
+        //when (idMetaData.convertId("myTable")).thenReturn("MYTABLE");
+        when (tablesConfig.containsKey("myTable")).thenReturn(false);
+        //when (idMetaData.convertId("myOtherTable")).thenReturn("MYOTHERTABLE");
         
         configSource.ensureTableConfig(tableName);
-        verify (tablesConfig).put(eq("MYTABLE"), (TableConfig) anyObject());
+        verify (tablesConfig).put(eq("myTable"), (TableConfig) anyObject());
         
-        when (idMetaData.convertId("myOtherTable")).thenReturn("MYOTHERTABLE");
-        when (tablesConfig.containsKey("MYOTHERTABLE")).thenReturn(true);
+        //when (idMetaData.convertId("myOtherTable")).thenReturn("MYOTHERTABLE");
+        when (tablesConfig.containsKey("myOtherTable")).thenReturn(true);
         configSource.ensureTableConfig(tableName2);
-        verify (tablesConfig, times(0)).put(eq("MYOTHERTABLE"), (TableConfig) anyObject());
+        verify (tablesConfig, times(0)).put(eq("myOtherTable"), (TableConfig) anyObject());
 
     }
 

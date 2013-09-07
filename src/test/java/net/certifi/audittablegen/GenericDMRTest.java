@@ -5,19 +5,13 @@
 package net.certifi.audittablegen;
 
 import java.sql.*;
-import java.util.*;
 import java.util.Map.Entry;
+import java.util.*;
 import javax.sql.DataSource;
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.datatype.LiquibaseDataType;
-import liquibase.exception.LiquibaseException;
-import liquibase.resource.FileSystemResourceAccessor;
-import org.hsqldb.jdbc.JDBCDataSource;
-import org.junit.*;
 import static org.junit.Assert.*;
+import org.junit.*;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +50,7 @@ public class GenericDMRTest {
         when(dmd.storesUpperCaseIdentifiers()).thenReturn(false);
         dmr = new GenericDMR(dataSource);
         //dmr.unverifiedSchema = "public";
-        dmr.configSource = configSource;
+        //dmr.configSource = configSource;
         
 //        dataSource = new JDBCDataSource();
 //        dataSource.setPassword("");
@@ -289,12 +283,12 @@ public class GenericDMRTest {
         Set<Entry<String, String>> setInner = (Set<Entry<String, String>>) mock (Set.class);
         Iterator iInner = mock (Iterator.class);
         
-        HashSet excludedColumns = mock(HashSet.class);
-        HashSet includedColumns = mock(HashSet.class);
+        Map excludedColumns = mock(Map.class);
+        Map includedColumns = mock(Map.class);
         tc.excludedColumns = excludedColumns;
         tc.includedColumns = includedColumns;
-        when (excludedColumns.contains(anyString())).thenReturn(false);
-        when (includedColumns.contains(anyString())).thenReturn(false);
+        when (excludedColumns.containsKey(anyString())).thenReturn(false);
+        when (includedColumns.containsKey(anyString())).thenReturn(false);
         when (configSource.getColumnPrefix()).thenReturn("");
         when (configSource.getColumnPostfix()).thenReturn("");
         

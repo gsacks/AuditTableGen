@@ -30,6 +30,12 @@ public class HsqldbDMR extends GenericDMR {
 
     }
 
+    HsqldbDMR (DataSource ds, String schema) throws SQLException{
+        
+        super(ds, schema);
+        
+    }
+    
     /**
      * Generate an in memory hsqldb datasource for testing
      *

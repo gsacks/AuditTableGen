@@ -4,6 +4,7 @@ import com.google.common.base.Throwables;
 import java.net.URI;
 import java.sql.*;
 import java.util.*;
+import java.util.logging.Level;
 import javax.sql.*;
 import org.apache.commons.cli.*;
 import org.slf4j.Logger;
@@ -22,6 +23,7 @@ public class AuditTableGen {
     String driver;
     String catalog;
     String schema;
+    Boolean initialized = false;
 
     /**
      * Constructor, takes a dataSource and sets up some basic instance variables.
@@ -36,6 +38,12 @@ public class AuditTableGen {
         
     }
     
+    /**
+     * Validates the provided dataSource and gets a DataSourceDMR
+     * object to manage database interaction.  Sets initialized flag
+     * to true if initialization is successful.
+     * @throws SQLException 
+     */
     void initialize()throws SQLException {
 
         Connection connection = dataSource.getConnection();
@@ -57,24 +65,107 @@ public class AuditTableGen {
             }
         } catch (SQLException e) {
             logger.error("Error getting catalog/schema", e);
+            
         }
 
         if (dmd.getDriverName().toLowerCase().contains("postgresql")) {
-            dmr = new PostgresqlDMR(dataSource);
+            dmr = new PostgresqlDMR(dataSource, schema);
             //known dataSource with specific implementation requirements
             //ie PostgrresDMR, HsqldbDMR...            
         }
         if (dmd.getDriverName().toLowerCase().contains("hsqldb")) {
-            dmr = new HsqldbDMR(dataSource);
+            dmr = new HsqldbDMR(dataSource, schema);
             //known dataSource with specific implementation requirements
             //ie PostgrresDMR, HsqldbDMR...            
         } else {
             //generic implementation
-            dmr = new GenericDMR(dataSource);
+            dmr = new GenericDMR(dataSource, schema);
+            logger.info("attempting to run against unknown database product");
+        }
+        
+        if (dmr != null){
+            this.initialized = true;
         }
 
     }
     
+    /**
+     * Executes audit table update to the database.  If audit configuration
+     * tables are not present, this will generate the configuration tables.
+     * If the configuration already exists, then it will generate the audit
+     * tables themselves.
+     * 
+     * @return true if update is successful at either generating new
+     * audit configuration tables or the actual audit tables.
+     */
+    Boolean updateAuditTables() {
+        
+        String script;
+        String message;
+        
+        if (!this.initialized){
+            try {
+                initialize();
+            } catch (SQLException ex) {
+                logger.error("Cannot initialize connection to the dataSource", ex);
+                return false;
+            }
+        }
+        
+        if (!dmr.hasConfigSource()){
+            message = "Audit table configuration missing. Generating...";
+            System.out.println(message);
+            logger.info(message);
+            
+            script = dmr.getCreateConfigSQL();
+            logger.info ("Attempting update of DB with SQL:");
+            logger.info (script);
+            dmr.executeCreateConfigSQL();
+            if (!dmr.validateCreateConfig()){
+                message = "Failed to generate audit configuration tables";
+                System.out.println(message);
+                logger.error(message);
+                logger.error(script);
+                return false;
+            }
+            else {
+                message = "Audit configuratiion tables created.";
+                System.out.println(message);
+                logger.info(message);
+                return true;
+            }
+        }
+        else {
+            dmr.getConfigSource();
+            script = dmr.getUpdateSQL();
+            logger.info ("Attempting update of DB with SQL:");
+            logger.info (script);
+            dmr.executeUpdateSQL();
+            if (!dmr.validateUpdate()){
+                message = "Failed to generate audit table script.";
+                System.out.println(message);
+                logger.error(message);
+                logger.error(script);
+                return false;
+            }
+            else {
+                message = "Audit tables created.";
+                System.out.println(message);
+                logger.info(message);
+                return true;
+            }       
+        }
+        
+    }
+    
+    /**
+     * Examines the DataSource metadata for information pertaining to the
+     * driver, catalog, schema and the presence of audit table configuration
+     * data.
+     * 
+     * @return String containing datasource information.
+     * @throws SQLException 
+     */
     String getDataSourceInfo() throws SQLException {
 
         Connection conn = dataSource.getConnection();
@@ -170,6 +261,15 @@ public class AuditTableGen {
            throw Throwables.propagate(ex);
         }
 
+        Boolean result = atg.updateAuditTables();
+
+        if (result){
+            logger.info("success");
+        }
+        else {
+            logger.info("failure");
+        }
+        
         logger.info("Done.");
     }
 

@@ -160,5 +160,44 @@ public class AuditTableGenTest {
         assertNotNull(result);
     }
 
+    /**
+     * Test of updateAuditTables method, of class AuditTableGen.
+     */
+    @Test
+    public void testUpdateAuditTables() {
+        System.out.println("updateAuditTables");
+        
+        DataSourceDMR dmr = mock(DataSourceDMR.class);
+        atg.dmr = dmr;
+        atg.initialized = true;
+        String testConfigSQL = "create auditConfig and stuff";
+        when(dmr.hasConfigSource()).thenReturn(false);
+        when(dmr.getCreateConfigSQL()).thenReturn(testConfigSQL);
+        when(dmr.validateCreateConfig()).thenReturn(true);
+        Boolean result = atg.updateAuditTables();
+        verify(dmr, times(1)).executeCreateConfigSQL();
+        assertEquals(true, result);
+                
+    }
+    
+        /**
+     * Test of updateAuditTables method, of class AuditTableGen.
+     */
+    @Test
+    public void test2UpdateAuditTables() {
+        System.out.println("updateAuditTables");
+        
+        DataSourceDMR dmr = mock(DataSourceDMR.class);
+        atg.dmr = dmr;
+        atg.initialized = true;
+        String testUpdateSQL = "create a bunch of zz_ table";
+        when(dmr.hasConfigSource()).thenReturn(true);
+        when(dmr.getUpdateSQL()).thenReturn(testUpdateSQL);
+        when(dmr.validateUpdate()).thenReturn(true);
+        Boolean result = atg.updateAuditTables();
+        verify(dmr, times(1)).executeUpdateSQL();
+        assertEquals(true, result);
+                
+    }
 
 }

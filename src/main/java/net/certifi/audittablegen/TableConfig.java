@@ -6,6 +6,7 @@ package net.certifi.audittablegen;
 
 import java.util.HashSet;
 import java.util.Map;
+import org.apache.commons.collections.map.CaseInsensitiveMap;
 
 /**
  *
@@ -24,38 +25,41 @@ public class TableConfig {
      *  to the data in excluded columns to not cause the insert or
      *  update triggers to fire.
      */
-    HashSet<String> excludedColumns;
-    HashSet<String> includedColumns;
+    Map<String, String> excludedColumns;
+    Map<String, String> includedColumns;
 
     TableConfig(String tableName, IdentifierMetaData idMetaData){
        this.idMetaData = idMetaData;
-       excludedColumns = new HashSet<>();
-       includedColumns = new HashSet<>();
+       excludedColumns = new CaseInsensitiveMap();
+       includedColumns = new CaseInsensitiveMap();
        this.tableName = tableName;
+       this.columns = new CaseInsensitiveMap();
+       
     }
 
     public Map<String, Map<String, String>> getColumns() {
         return columns;
+
     }
 
     public void setColumns(Map<String, Map<String, String>> columns) {
-        this.columns = columns;
+        this.columns = new CaseInsensitiveMap(columns);
     }
     
     void addExcludedColumn(String columnName){
-        excludedColumns.add(columnName);
+        excludedColumns.put(columnName, columnName);
     }
     
-    public HashSet<String> getExcludedColumns() {
-        return new HashSet(excludedColumns);
+    public CaseInsensitiveMap getExcludedColumns() {
+        return new CaseInsensitiveMap(excludedColumns);
     }
         
     void addIncludedColumn(String columnName){
-        includedColumns.add(columnName);
+        includedColumns.put(columnName, columnName);
     }
     
-    public HashSet<String> getIncludedColumns() {
-        return new HashSet(includedColumns);
+    public CaseInsensitiveMap getIncludedColumns() {
+        return new CaseInsensitiveMap(includedColumns);
     }
     
     Boolean getHasDeleteTrigger() {

@@ -11,6 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import javax.sql.DataSource;
+import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.commons.dbcp.BasicDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,7 @@ class GenericDMR implements DataSourceDMR {
     String verifiedSchema;
     String unverifiedAuditConfigTable = "auditconfig";
     String verifiedAuditConfigTable;
-    ConfigSource configSource;
+    //ConfigSource configSource;
     IdentifierMetaData idMetaData;
    
     
@@ -67,7 +68,6 @@ class GenericDMR implements DataSourceDMR {
         idMetaData.setStoresUpperCaseIds(dmd.storesUpperCaseIdentifiers());
 
         unverifiedSchema = schema;
-        configSource = new ConfigSource(idMetaData);
 
         conn.close();
 
@@ -110,6 +110,13 @@ class GenericDMR implements DataSourceDMR {
         
     }
    
+    /**
+     * Read the configuration attributes from the audit configuration
+     * table in the target database/schema and store in the param
+     * configSource
+     * 
+     * @param configSource 
+     */
     void loadConfigAttributes(ConfigSource configSource){
         
         StringBuilder builder = new StringBuilder();
@@ -262,6 +269,8 @@ class GenericDMR implements DataSourceDMR {
                 + configSource.getTablePostfix();
         
         //check if table already exists
+        Map existingAuditTables = new CaseInsensitiveMap(configSource.existingAuditTables);
+        
         if (configSource.existingAuditTables.containsKey(auditTableName)){
             sql = getAuditTableModifySql(configSource, tableName);
         }
@@ -289,7 +298,7 @@ class GenericDMR implements DataSourceDMR {
                 throw new RuntimeException("No results for DatabaseMetaData.getColumns(" + verifiedSchema + "." + tableName + ")");
             }
             while (rs.next()){
-                Map columnMetaData = new HashMap<String, String>();
+                Map columnMetaData = new CaseInsensitiveMap();
                 for (int i = 1; i <= metaDataColumnCount; i++){
                     columnMetaData.put(rsmd.getColumnName(i), rs.getString(i));
                 }
@@ -324,12 +333,12 @@ class GenericDMR implements DataSourceDMR {
             //ToDo: make this search look for regexp
             //ToDo: make this case insensitive
             String columnName = entry.getKey();
-            if (!tc.excludedColumns.contains(columnName)
-                || tc.includedColumns.contains(columnName) ){
+            if (!tc.excludedColumns.containsKey(columnName)
+                || tc.includedColumns.containsKey(columnName) ){
                 //include this column in the audit table
                 String auditColumnName = configSource.getColumnPrefix()
                         + columnName + configSource.getColumnPostfix();
-                Map auditColumnMetaData = new HashMap<String, String>();
+                Map auditColumnMetaData = new CaseInsensitiveMap();
                 
                 //copy metaData from primary table/column map to audit table/ciolumn map
                 for (Map.Entry<String, String> metaDataEntry : entry.getValue().entrySet() ){
@@ -357,8 +366,10 @@ class GenericDMR implements DataSourceDMR {
         
     String getAuditTableCreateSql(ConfigSource configSource, String tableName){
         
-                StringBuilder builder = new StringBuilder();
-               //TODO everything.
+        StringBuilder builder = new StringBuilder();
+        
+        builder.append("create table ").append(tableName).append(System.lineSeparator());
+        
         
         
         return builder.toString();
@@ -467,5 +478,61 @@ class GenericDMR implements DataSourceDMR {
         }
 
         return verifiedAuditConfigTable;
+    }
+
+    @Override
+    public String getCreateConfigSQL() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void executeCreateConfigSQL() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public Boolean validateCreateConfig() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public String getUpdateSQL() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void executeUpdateSQL() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public Boolean validateUpdate() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public ConfigSource getConfigSource() {
+        
+        ConfigSource configSource = new ConfigSource(idMetaData);
+
+        String schema = this.getSchema();
+        if (schema == null){
+            logger.error("Unable to generate ConfigSource.  No valid schema is set");
+            return null;
+        }
+                
+        String auditConfig = this.getAuditConfigTable();
+        if (auditConfig == null){
+            logger.error("Unable to generate ConfigSource.  No auditConfig table exists");
+            return null;
+        }
+
+        this.loadConfigAttributes(configSource);
+        this.loadConfigTables(configSource);
+        
+        //configSource.
+        //this.getNewAuditTableColumnMetaData(configSource, tableToAudit);
+        
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 }
