@@ -18,16 +18,16 @@ public class ConfigSource {
     
     Map<String, TableConfig> tablesConfig;
     Map<String, TableConfig> existingAuditTables;
-    private String tablePrefix = "zz_";
-    private String tablePostfix = "";
-    private String columnPrefix = "";
-    private String columnPostfix = "";
+    String tablePrefix = "zz_";
+    String tablePostfix = "";
+    String columnPrefix = "";
+    String columnPostfix = "";
     IdentifierMetaData idMetaData;
     
     ConfigSource(IdentifierMetaData idMetaData){
         this.idMetaData = idMetaData;
-        tablesConfig = new HashMap<String, TableConfig>();
-        existingAuditTables = new HashMap<String, TableConfig>();
+        tablesConfig = new HashMap<>();
+        existingAuditTables = new HashMap<>();
     }
     
     void addExistingAuditTable (String auditTableName){

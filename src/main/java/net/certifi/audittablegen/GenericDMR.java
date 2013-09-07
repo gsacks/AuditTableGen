@@ -56,12 +56,12 @@ class GenericDMR implements DataSourceDMR {
 
         dataSource = ds;
         Connection conn = ds.getConnection();
-        DatabaseMetaData dmd;
-        dmd = conn.getMetaData();
+        DatabaseMetaData dmd = conn.getMetaData();
         databaseProduct = dmd.getDatabaseProductName();
         idMetaData = new IdentifierMetaData();
 
-        //ToDo: not contemplating quoted identifiers for now
+        //storing this data for potential future use.
+        //not using it for anything currently
         idMetaData.setStoresLowerCaseIds(dmd.storesLowerCaseIdentifiers());
         idMetaData.setStoresMixedCaseIds(dmd.storesMixedCaseIdentifiers());
         idMetaData.setStoresUpperCaseIds(dmd.storesUpperCaseIdentifiers());
@@ -129,7 +129,8 @@ class GenericDMR implements DataSourceDMR {
                 
                 //initially not worrying about wildcards.
                 //TODO handle regexp match in ConfigSource.
-                if (rs.getString("attribute").equals("exclude")){
+                String attribute = rs.getString("attribute");
+                if (attribute.equalsIgnoreCase("exclude")){
                     //parse exclude attribute
                     table = rs.getString("table").trim();
                     column = rs.getString("column").trim();
@@ -140,25 +141,25 @@ class GenericDMR implements DataSourceDMR {
                 //excluded.  This is here to handle overriding a
                 //regexp match in the exclude list.
                 //TODO implement regexp match in ConfigSource.
-                else if (rs.getString("attribute").equals("include")){
+                else if (attribute.equalsIgnoreCase("include")){
                     //parse include attribute
                     table = rs.getString("table").trim();
                     column = rs.getString("column").trim();
                     configSource.addIncludedColumn(table, column);         
                 }
-                else if (rs.getString("attribute").equals("tablepreifx")){
+                else if (attribute.equalsIgnoreCase("tableprefix")){
                     //parse table prefix attribute
                     configSource.setTablePrefix(rs.getString("value").trim());
                 }
-                else if (rs.getString("attribute").equals("tablepostfix")){
+                else if (attribute.equalsIgnoreCase("tablepostfix")){
                     //parse table postfix attribute
                     configSource.setTablePostfix(rs.getString("value").trim());
                 }
-                else if (rs.getString("attribute").equals("columnpreifx")){
+                else if (attribute.equalsIgnoreCase("columnprefix")){
                     //parse column prefix attribute
                     configSource.setColumnPrefix(rs.getString("value").trim());
                 }
-                else if (rs.getString("attribute").equals("columnpostfix")){
+                else if (attribute.equalsIgnoreCase("columnpostfix")){
                     //parse column postfix attribute
                     configSource.setColumnPostfix(rs.getString("value").trim());
                 }
@@ -166,7 +167,7 @@ class GenericDMR implements DataSourceDMR {
                 //these are unlikely to be used.  Value of 'false' turns the
                 //trigger off.  Any other value is true.  If not set here, the
                 //default is true for all triggers.
-                else if (rs.getString("attribute").equals("auditinsert")){
+                else if (attribute.equalsIgnoreCase("auditinsert")){
                     //parse audit insert attribute
                     table = rs.getString("table").trim();
                     configSource.ensureTableConfig(table);
@@ -174,7 +175,7 @@ class GenericDMR implements DataSourceDMR {
                     configSource.getTableConfig(table)
                             .setHasInsertTrigger(value.equals("FALSE") ? false : true);
                 }
-                 else if (rs.getString("attribute").equals("auditupdate")){
+                 else if (attribute.equalsIgnoreCase("auditupdate")){
                     //parse audit update attribute
                     table = rs.getString("table").trim();
                     configSource.ensureTableConfig(table);
@@ -182,7 +183,7 @@ class GenericDMR implements DataSourceDMR {
                     configSource.getTableConfig(table)
                             .setHasUpdateTrigger(value.equals("FALSE") ? false : true);
                 }
-                 else if (rs.getString("attribute").equals("auditdelete")){
+                 else if (attribute.equalsIgnoreCase("auditdelete")){
                     //parse audit delete attribute
                     table = rs.getString("table").trim();
                     configSource.ensureTableConfig(table);
@@ -220,9 +221,9 @@ class GenericDMR implements DataSourceDMR {
             while (rs.next()){
                 table = rs.getString("TABLE_NAME").trim();
                 
-                //ToDo: handle case where table full name matches the prefix or postfix
-                if ( table.startsWith(configSource.getTablePrefix())
-                     && table.endsWith(configSource.getTablePostfix()) ){
+                //ToDo: handle case where table full name matches the prefix or postfi
+                if ( table.toUpperCase().startsWith(configSource.getTablePrefix().toUpperCase())
+                     && table.toUpperCase().endsWith(configSource.getTablePostfix().toUpperCase())){
                     configSource.addExistingAuditTable(table);
                 }
                 else {
@@ -230,7 +231,7 @@ class GenericDMR implements DataSourceDMR {
                 }
             }
             
-            dmd.getConnection().close();
+            rs.close();
             
         } catch (SQLException e){
             logger.error("SQL error retrieving table list: ", e);
@@ -273,7 +274,7 @@ class GenericDMR implements DataSourceDMR {
     
     Map getColumnMetaDataForTable (String tableName){
         
-        Map columns = new HashMap<String, HashMap<String, String>>();
+        Map columns = new HashMap<>();
         
         try {
             Connection conn = dataSource.getConnection();
@@ -303,7 +304,15 @@ class GenericDMR implements DataSourceDMR {
         return columns;
         
     }
-    
+    /**
+     * Copy column metaData from the source table over to the new audit
+     * table.  Exclude or include columns in the audit table according
+     * the the table configuration data.
+     * 
+     * @param configSource
+     * @param tableToAudit
+     * @return 
+     */
     Map getNewAuditTableColumnMetaData (ConfigSource configSource, String tableToAudit){
         
         TableConfig tc = configSource.getTableConfig(tableToAudit);
@@ -312,22 +321,24 @@ class GenericDMR implements DataSourceDMR {
         
         for (Map.Entry<String, Map<String, String>> entry : tc.getColumns().entrySet() ){
             
-            //ToDo: name this search look for regexp
-            if (!tc.excludedColumns.contains(entry.getKey())
-                || tc.includedColumns.contains(entry.getKey()) ){
+            //ToDo: make this search look for regexp
+            //ToDo: make this case insensitive
+            String columnName = entry.getKey();
+            if (!tc.excludedColumns.contains(columnName)
+                || tc.includedColumns.contains(columnName) ){
                 //include this column in the audit table
                 String auditColumnName = configSource.getColumnPrefix()
-                        + entry.getKey() + configSource.getColumnPostfix();
+                        + columnName + configSource.getColumnPostfix();
                 Map auditColumnMetaData = new HashMap<String, String>();
                 
                 //copy metaData from primary table/column map to audit table/ciolumn map
                 for (Map.Entry<String, String> metaDataEntry : entry.getValue().entrySet() ){
                     String metaDataKey = metaDataEntry.getKey();
                     String metaDataValue = metaDataEntry.getValue();
-                    if (metaDataKey.equals("IS_AUTOINCREMENT")){
+                    if (metaDataKey.equalsIgnoreCase("IS_AUTOINCREMENT")){
                         metaDataValue="NO";
                     }
-                    if (metaDataKey.equals("IS_GENERATEDCOLUMN")){
+                    if (metaDataKey.equalsIgnoreCase("IS_GENERATEDCOLUMN")){
                         metaDataValue="NO";
                     }
                     auditColumnMetaData.put(metaDataKey, metaDataValue);

@@ -4,7 +4,6 @@
  */
 package net.certifi.audittablegen;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
@@ -30,9 +29,9 @@ public class TableConfig {
 
     TableConfig(String tableName, IdentifierMetaData idMetaData){
        this.idMetaData = idMetaData;
-       excludedColumns = new HashSet<String>();
-       includedColumns = new HashSet<String>();
-       this.tableName = idMetaData.convertId(tableName);
+       excludedColumns = new HashSet<>();
+       includedColumns = new HashSet<>();
+       this.tableName = tableName;
     }
 
     public Map<String, Map<String, String>> getColumns() {
@@ -44,7 +43,7 @@ public class TableConfig {
     }
     
     void addExcludedColumn(String columnName){
-        excludedColumns.add(idMetaData.convertId(columnName));
+        excludedColumns.add(columnName);
     }
     
     public HashSet<String> getExcludedColumns() {
@@ -52,7 +51,7 @@ public class TableConfig {
     }
         
     void addIncludedColumn(String columnName){
-        includedColumns.add(idMetaData.convertId(columnName));
+        includedColumns.add(columnName);
     }
     
     public HashSet<String> getIncludedColumns() {
@@ -88,6 +87,6 @@ public class TableConfig {
     }
     
     void setTableName(String tableName) {
-        this.tableName = idMetaData.convertId(tableName);
+        this.tableName = tableName;
     }
 }

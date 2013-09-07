@@ -115,16 +115,21 @@ public class IdentifierMetaDataTest {
 
     /**
      * Test of convertId method, of class IdentifierMetaData.
+     * 
+     * This method is disabled.
+     * The test verifies that return value = input
+     * without converting it.
      */
     @Test
     public void testConvertId() {
         System.out.println("convertId");
+
         String identifier = "MyColumnName";
         IdentifierMetaData instance = new IdentifierMetaData();
         instance.setStoresLowerCaseIds(true);
-        assertEquals("mycolumnname", instance.convertId(identifier));
+        assertEquals("MyColumnName", instance.convertId(identifier));
         instance.setStoresUpperCaseIds(true);
-        assertEquals("MYCOLUMNNAME", instance.convertId(identifier));
+        assertEquals("MyColumnName", instance.convertId(identifier));
         instance.setStoresMixedCaseIds(true);
         assertEquals("MyColumnName", instance.convertId(identifier));
     }
