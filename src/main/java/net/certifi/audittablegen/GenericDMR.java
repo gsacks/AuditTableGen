@@ -6,10 +6,8 @@ package net.certifi.audittablegen;
 
 import com.google.common.base.Throwables;
 import java.sql.*;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
+import java.util.Map.Entry;
 import javax.sql.DataSource;
 import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.commons.dbcp.BasicDataSource;
@@ -235,6 +233,12 @@ class GenericDMR implements DataSourceDMR {
                 }
                 else {
                     configSource.ensureTableConfig(table);
+                    
+                    //just in case audit config has set up the table with the
+                    //wrong case sensitivity, update the table name with the
+                    //value returned from the db
+                    TableConfig tc = configSource.getTableConfig(table);
+                    tc.setTableName(table);
                 }
             }
             
@@ -246,13 +250,13 @@ class GenericDMR implements DataSourceDMR {
         }
         
         //populate table meta data
-        for ( Map.Entry <String, TableConfig> entry : configSource.tablesConfig.entrySet()){
-            entry.getValue().columns = getColumnMetaDataForTable(entry.getKey());
+        for ( Map.Entry <String, TableConfig> entry : configSource.existingTables.entrySet()){
+            entry.getValue().setColumns(getColumnMetaDataForTable(entry.getValue().getTableName()));
         }
         
         //populate existing audit table meta data
         for ( Map.Entry <String, TableConfig> entry : configSource.existingAuditTables.entrySet()){
-            entry.getValue().columns = getColumnMetaDataForTable(entry.getKey());
+            entry.getValue().setColumns(getColumnMetaDataForTable(entry.getValue().getTableName()));
         }
         
         return;
@@ -314,6 +318,7 @@ class GenericDMR implements DataSourceDMR {
         
     }
     /**
+     * LEGACY OF EARLY DEVELOPMENT - NOT USED
      * Copy column metaData from the source table over to the new audit
      * table.  Exclude or include columns in the audit table according
      * the the table configuration data.
@@ -495,9 +500,34 @@ class GenericDMR implements DataSourceDMR {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    @Override
-    public String getUpdateSQL() {
-        throw new UnsupportedOperationException("Not supported yet.");
+    //@Override
+    public String getUpdateSQL(ConfigSource configSource) {
+        
+        StringBuilder builder = new StringBuilder();
+          
+        TableConfig tc;
+        TableConfig atc;
+        Iterator iter = configSource.existingTables.entrySet().iterator();
+        while (iter.hasNext()){
+            Entry e = (Entry) iter.next();
+            tc = (TableConfig) e.getValue();
+            String key = (String) e.getKey();
+            String auditKey = 
+                    configSource.getTablePrefix()
+                    + key
+                    + configSource.getTablePostfix();
+            atc = configSource.getExistingAuditTable(auditKey); 
+            
+            //do magic SQL generation here
+            ChangeSourceFactory tableBuilder = new ChangeSourceFactory(tc, atc, configSource);
+            
+            
+            
+            
+        }
+        
+        return builder.toString();
+
     }
 
     @Override
@@ -530,9 +560,8 @@ class GenericDMR implements DataSourceDMR {
         this.loadConfigAttributes(configSource);
         this.loadConfigTables(configSource);
         
-        //configSource.
-        //this.getNewAuditTableColumnMetaData(configSource, tableToAudit);
+        return configSource;
         
-        throw new UnsupportedOperationException("Not supported yet.");
     }
+     
 }

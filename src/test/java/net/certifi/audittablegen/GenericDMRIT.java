@@ -118,7 +118,7 @@ public class GenericDMRIT {
     @Test
     public void testGetColumnMetaDataForTable() {
         
-        Map columnMetaDataForTable = dmr.getColumnMetaDataForTable("AUDITTABLECONFIG");
+        Map columnMetaDataForTable = dmr.getColumnMetaDataForTable("AUDITCONFIG");
         for (Iterator it = columnMetaDataForTable.entrySet().iterator(); it.hasNext();) {
             Map.Entry<String, String> metaDataEntry = (Map.Entry<String, String>) it.next();
             System.out.printf("Metadata column: %s, Metadata values: %s", metaDataEntry.getKey(), metaDataEntry.getValue());

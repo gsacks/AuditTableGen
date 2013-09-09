@@ -4,7 +4,6 @@
  */
 package net.certifi.audittablegen;
 
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.slf4j.Logger;
@@ -17,7 +16,7 @@ import org.slf4j.LoggerFactory;
 public class ConfigSource {
     private static final Logger logger = LoggerFactory.getLogger(ConfigSource.class);
     
-    Map<String, TableConfig> tablesConfig;
+    Map<String, TableConfig> existingTables;
     Map<String, TableConfig> existingAuditTables;
     String tablePrefix = "zz_";
     String tablePostfix = "";
@@ -27,21 +26,15 @@ public class ConfigSource {
     
     ConfigSource(IdentifierMetaData idMetaData){
         this.idMetaData = idMetaData;
-        tablesConfig = new CaseInsensitiveMap();
+        existingTables = new CaseInsensitiveMap();
         existingAuditTables = new CaseInsensitiveMap();
     }
     
     void addExistingAuditTable (String auditTableName){
         
-        String myAuditTableName = idMetaData.convertId(auditTableName);
-        if (existingAuditTables.containsKey(myAuditTableName)){
-            //table already exists
-            return;
-        }
-        else {
-            TableConfig atc = new TableConfig(myAuditTableName, idMetaData);
-            existingAuditTables.put (myAuditTableName, atc);
-            return;
+        if (!existingAuditTables.containsKey(auditTableName)){
+            TableConfig atc = new TableConfig(auditTableName);
+            existingAuditTables.put (auditTableName, atc);
         }
 
     }
@@ -61,14 +54,9 @@ public class ConfigSource {
      */
     void addTableConfig (String tableName){
         
-        if(tablesConfig.containsKey(tableName)){
-            //table already exists
-            return;
-        }
-        else {
-            TableConfig tc = new TableConfig(tableName, idMetaData);
-            tablesConfig.put(tableName, tc);
-            return;
+        if(!existingTables.containsKey(tableName)){
+            TableConfig tc = new TableConfig(tableName);
+            existingTables.put(tableName, tc);
         }
     }
     
@@ -94,18 +82,9 @@ public class ConfigSource {
     
         TableConfig tc;
         
-        String myTableName = idMetaData.convertId(tableName);
-        String myColumnName = idMetaData.convertId(columnName);
-        
-        if(tablesConfig.containsKey(myTableName)){
-            tc = tablesConfig.get(myTableName);
-        }
-        else {
-            tc = new TableConfig(myTableName, idMetaData);
-            tablesConfig.put(myTableName, tc);
-        }
-        
-        tc.addExcludedColumn(myColumnName);
+        ensureTableConfig(tableName);
+        tc = this.getTableConfig(tableName);
+        tc.addExcludedColumn(columnName);
         
     }
     
@@ -124,22 +103,16 @@ public class ConfigSource {
     void addIncludedColumn (String tableName, String columnName){
     
         TableConfig tc;
-        
-        if(tablesConfig.containsKey(tableName)){
-            tc = tablesConfig.get(tableName);
-        }
-        else {
-            tc = new TableConfig(tableName, idMetaData);
-            tablesConfig.put(tableName, tc);
-        }
-        
+
+        ensureTableConfig(tableName);
+        tc = this.getTableConfig(tableName);
         tc.addIncludedColumn(columnName);
         
     }
 
     TableConfig getTableConfig (String tableName){
         
-        return tablesConfig.get(tableName);
+        return existingTables.get(tableName);
     }
     
     String getTablePostfix() {
@@ -176,6 +149,10 @@ public class ConfigSource {
     void setColumnPrefix(String columnPrefix) {
         this.columnPrefix = "";
         //this.columnPrefix = columnPrefix;
+    }
+
+    TableConfig getExistingAuditTable(String key) {
+        return existingAuditTables.get(key);
     }
     
 }

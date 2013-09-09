@@ -17,8 +17,7 @@ public class TableConfig {
     Boolean hasInsertTrigger = true;
     Boolean hasUpdateTrigger = true;
     Boolean hasDeleteTrigger = true;
-    private String tableName;
-    IdentifierMetaData idMetaData;
+    String tableName;
     Map<String, Map<String,String>> columns; //column meta data
     
     /** excluded columns are represented in the audit table, but changes
@@ -28,12 +27,11 @@ public class TableConfig {
     Map<String, String> excludedColumns;
     Map<String, String> includedColumns;
 
-    TableConfig(String tableName, IdentifierMetaData idMetaData){
-       this.idMetaData = idMetaData;
+    TableConfig(String tableName){
        excludedColumns = new CaseInsensitiveMap();
        includedColumns = new CaseInsensitiveMap();
        this.tableName = tableName;
-       this.columns = new CaseInsensitiveMap();
+       columns = new CaseInsensitiveMap();
        
     }
 

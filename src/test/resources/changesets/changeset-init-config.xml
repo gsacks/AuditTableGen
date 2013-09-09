@@ -3,7 +3,7 @@
 
     <changeSet author="gsacks" id="1">
         <createTable tableName="auditconfig">
-            <column name="auditconfigid" type="INTEGER" autoIncrement="true">
+            <column name="auditconfigid" type="BIGINT" autoIncrement="true" >
                 <constraints nullable="false"/>
             </column>
             <column name="attribute" type="VARCHAR(255)">
@@ -22,6 +22,8 @@
             <column name="version" type="INTEGER" defaultValueNumeric="0">
                 <constraints nullable="false"/>
             </column>
+            <column name="testDecimal" type="DECIMAL(9,3)"/>
+            <column name="testNumeric12_2" type="NUMERIC(12,2)"/>
         </createTable>
         <addPrimaryKey tableName="auditconfig" constraintName="auditconfig_pk" columnNames="auditconfigid"/>
         <createTable tableName="auditconfigattribute">

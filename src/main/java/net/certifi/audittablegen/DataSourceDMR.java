@@ -83,7 +83,7 @@ public interface DataSourceDMR {
      * and altered audit tables.  Does not run the script.
      * @return 
      */
-    String getUpdateSQL();
+    //String getUpdateSQL();
     
     
     /** Execute SQL to update the current DataSource with new and

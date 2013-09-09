@@ -206,7 +206,7 @@ public class GenericDMRTest {
         TableConfig tc = mock(TableConfig.class);
         GenericDMR spyDMR = spy(dmr);
         
-        configSource.tablesConfig = tablesConfig;
+        configSource.existingTables = tablesConfig;
         configSource.existingAuditTables = auditTablesConfig;
         
         ResultSet rs = mock(ResultSet.class);

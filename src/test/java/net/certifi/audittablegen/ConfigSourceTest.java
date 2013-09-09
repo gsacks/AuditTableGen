@@ -40,7 +40,7 @@ public class ConfigSourceTest {
     @Before
     public void setUp() {
         configSource = new ConfigSource(idMetaData);
-        configSource.tablesConfig = tablesConfig;
+        configSource.existingTables = tablesConfig;
         configSource.existingAuditTables = existingAuditTables;
         idMetaData.setStoresUpperCaseIds(true);
     }
