@@ -17,6 +17,7 @@ public class TableConfig {
     Boolean hasInsertTrigger = true;
     Boolean hasUpdateTrigger = true;
     Boolean hasDeleteTrigger = true;
+    Boolean excludeTable = false;
     String tableName;
     Map<String, Map<String,String>> columns; //column meta data
     
@@ -91,4 +92,14 @@ public class TableConfig {
     void setTableName(String tableName) {
         this.tableName = tableName;
     }
+
+    public Boolean getExcludeTable() {
+        return excludeTable;
+    }
+
+    public void setExcludeTable(Boolean excludeTable) {
+        this.excludeTable = excludeTable;
+    }
+    
+    
 }

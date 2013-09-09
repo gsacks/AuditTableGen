@@ -70,6 +70,19 @@ public class ConfigSource {
     }
     
     /**
+     * Finds the table in the existing table map and sets the exclude
+     * property.
+     * 
+     * @param tableName The name of the table to exclude from having an audit
+     * table created for it.
+     */
+    void addExcludedTable (String tableName){
+         TableConfig tc;
+         ensureTableConfig(tableName);
+         tc = this.getTableConfig(tableName);
+         tc.setExcludeTable(Boolean.TRUE);
+    }
+    /**
      * Finds the table in the existing table map and adds the column
      * to the list of columns to be excluded from triggering an update
      * to the audit table.  Note that the case sensitive table and column

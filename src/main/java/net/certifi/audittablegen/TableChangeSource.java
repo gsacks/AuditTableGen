@@ -13,12 +13,14 @@ import java.util.ArrayList;
 public class TableChangeSource {
     
     Boolean isNewTable;
-    String tableName;
+    String auditTableName;
+    Boolean excluded;
     ArrayList<ColumnChangeSource> columns;
     
-    TableChangeSource (Boolean isNewTable, String tableName){
+    TableChangeSource (Boolean isNewTable, String auditTableName, Boolean excluded){
         this.isNewTable = isNewTable;
-        this.tableName = tableName;
+        this.auditTableName = auditTableName;
+        this.excluded = excluded;
         columns = new ArrayList<>();
     }
     

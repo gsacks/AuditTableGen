@@ -139,7 +139,15 @@ class GenericDMR implements DataSourceDMR {
                     //parse exclude attribute
                     table = rs.getString("table").trim();
                     column = rs.getString("column").trim();
-                    configSource.addExcludedColumn(table, column);                    
+                    if (table.isEmpty()){
+                        logger.error("exclude attribute with no table name is not currently supported");
+                    }
+                    else if (column.isEmpty()){
+                        configSource.addExcludedTable(table);
+                    }
+                    else {
+                        configSource.addExcludedColumn(table, column);
+                    }
                 }
                 
                 //all columns are included by default, unless specifically
@@ -519,8 +527,9 @@ class GenericDMR implements DataSourceDMR {
             atc = configSource.getExistingAuditTable(auditKey); 
             
             //do magic SQL generation here
-            ChangeSourceFactory tableBuilder = new ChangeSourceFactory(tc, atc, configSource);
+            ChangeSourceFactory changeSourceFactory = new ChangeSourceFactory(configSource);
             
+            //TO DO - get all of the changes and apply sql in a loop    
             
             
             

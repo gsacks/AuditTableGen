@@ -28,6 +28,11 @@ public class ChangeSourceFactory {
                     + configSource.tablePostfix;
         
         TableConfig sourceTable = configSource.getTableConfig(baseTableName);
+        if (sourceTable == null){
+            //table does not exist
+            return null;
+        }
+
         TableConfig auditTable = null;
         Boolean isNewTable = true;
         if (configSource.hasExistingAuditTable(auditTableName)){
@@ -36,8 +41,10 @@ public class ChangeSourceFactory {
             
         }
         
- 
-        TableChangeSource ts = new TableChangeSource(isNewTable, auditTableName);
+        //if the entire table is excluded, it might be better to return null
+        //but for now return an object with the excluded property set, and
+        //let the consuming object decide if it needs to do anything or not.
+        TableChangeSource ts = new TableChangeSource(isNewTable, auditTableName, sourceTable.getExcludeTable());
 
         //Map sourceColumns = sourceTable.getColumns();
         for (Map.Entry<String, Map<String, String>> entry : sourceTable.getColumns().entrySet()) {
