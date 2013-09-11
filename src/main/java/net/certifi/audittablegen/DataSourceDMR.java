@@ -4,6 +4,8 @@
  */
 package net.certifi.audittablegen;
 
+import java.util.List;
+
 
 /**
  *
@@ -17,8 +19,13 @@ public interface DataSourceDMR {
      * @return True if the audit tables are present in the
      * DataSource (and schema, if a schema is set).
      */
-    Boolean hasConfigSource ();
-    
+    Boolean hasAuditConfigTable();
+           
+    /**
+     * generate new audit configuration tables in the targeted database/schema
+     */
+    void createAuditConfigTable();
+
     /**
      * Set the schema. The input value is recorded to the an unvalidated schema
      * variable.  It is then looked up in the database, and if there is
@@ -26,7 +33,7 @@ public interface DataSourceDMR {
      * validated schema variable, or null if there is no match.
      * @param schema 
      */
-    void setSchema(String schema);
+     void setSchema(String schema);
     
     /**
      * Get the schema
@@ -41,78 +48,74 @@ public interface DataSourceDMR {
      * against the database is not case sensitive.
      * @param table 
      */
-    void setAuditConfigTable(String table);
+    void setAuditConfigTableName(String table);
     
     /**
      * Get the audit configuration table name.
      * @return If the table name cannot be validated against
      * the DataSource, then return value is null. 
      */
-    String getAuditConfigTable();
+    String getAuditConfigTableName();
+            
+    /**
+     * Read the configuration attributes from the audit configuration
+     * table in the target database/schema and return as a list
+     *
+     * @return List of ConfigAttribute objects or an empty list if none are found.
+     */
+    List getConfigAttributes();
     
     /**
-     * Get the SQL script to update the current DataSource with
-     * new audit configuration tables. Does not run the script.
-     * @return 
-     */
-    String getCreateConfigSQL();
-    
-    /**
-     * Execute SQL to update the current DataSource with new audit
-     * configuration tables.
-     */
-    void executeCreateConfigSQL();
-    
-    /**
-     * Get the SQL script to validate that the current DataSource
-     * has been successfully updated with audit configuration tables.
-     * Does not run the script.
-     * @return 
-     */
-    //String getValidateCreateConfigSQL();
-    
-    /** Validate that the DataSource has been updated with new audit
-     * configuration tables.
+     * Get List of TableDef objects for all tables
+     * in the targeted database/schema
      * 
-     * @return true if the current tables match the expected result.
+     * @return List of TableDef objects or an empty list if none are found.
      */
-    Boolean validateCreateConfig();
+    List getTables ();
     
     /**
-     * Get the SQL script to update the current DataSource with new
-     * and altered audit tables.  Does not run the script.
-     * @return 
-     */
-    //String getUpdateSQL();
-    
-    
-    /** Execute SQL to update the current DataSource with new and
-     * altered audit tables.
-     */
-    void executeUpdateSQL();
-    
-    /**
-     * Get the SQL script to validate that the current DataSource
-     * has been successfully updated with new and altered audit tables.
-     * Does not run the scrip.t
-     * @return 
-     */
-    //String getValidateUpdateSQL();
-    
-    /**
-     * Validate that the DataSource has been updated with new and
-     * altered audit tables.
+     * Get List of ColumnDef objects for all tables
+     * in the targeted database/schema
      * 
-     * @return true if the current tables match the expected result. 
+     * @param tableName
+     * @return List of ColumnDef objects or an empty list if none are found.
      */
-    Boolean validateUpdate();
+    List getColumns (String tableName);
     
     /**
-     * Creates a ConfigSource representation of the target
-     * catalog/schema necessary to generate the audit tables and triggers
+     * Read an ordered list of db change commands into a buffer
      * 
-     * @return Returns a ConfigSource object or null if unable to generate
-     * all valid components of the configuration.
+     * @param units 
      */
-    ConfigSource getConfigSource();
+    void readDBChangeList(List<DBChangeUnit> units);
+    
+    /**
+     * Execute the db change commands currently in the change buffer
+     */
+    void executeChanges();
+    
+    /**
+     * Read an ordered list of db change commands into a buffer and execute
+     * them.  Any commands currently in the buffer will be executed ahead
+     * of the units in the supplied list.
+     * 
+     * @param units 
+     */
+    void executeDBChangeList(List<DBChangeUnit> units);
+    
+    /**
+     * Discard any db change commands currently in the change buffer
+     * without executing them.
+     */
+    void purgeDBChanges();
+    
+//    void createTable (String tableName);
+//    void addColumn (String tableName, ColumnDef columnDef);
+//    void renameColumn (String tableName, String columnName);
+//    void alterColumn (String tableName, ColumnDef columnDef);
+    
+
 }
+
+    
+

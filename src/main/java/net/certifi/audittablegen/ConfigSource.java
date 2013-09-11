@@ -4,6 +4,8 @@
  */
 package net.certifi.audittablegen;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.slf4j.Logger;
@@ -22,12 +24,116 @@ public class ConfigSource {
     String tablePostfix = "";
     String columnPrefix = "";
     String columnPostfix = "";
-    IdentifierMetaData idMetaData;
+    List<ConfigAttribute> allAttributes; //all attributes
+    List<ConfigAttribute> excludes; //only exclude attributes
+    List<ConfigAttribute> includes; //only include attributes
+    //IdentifierMetaData idMetaData;
     
-    ConfigSource(IdentifierMetaData idMetaData){
-        this.idMetaData = idMetaData;
+    ConfigSource(){
+        //this.idMetaData = idMetaData;
         existingTables = new CaseInsensitiveMap();
         existingAuditTables = new CaseInsensitiveMap();
+        allAttributes = new ArrayList<>();
+        excludes = new ArrayList<>();
+        includes = new ArrayList<>();
+    }
+    
+    void addAtrributes(List<ConfigAttribute> attributes){
+        
+        for ( ConfigAttribute attrib : attributes){
+            
+            addAtribute(attrib);
+            
+        }
+    }
+
+    void addAtribute(ConfigAttribute attrib) {
+
+        //TODO handle regexp or wildcards resolve all excludes 1st
+        //then resolve includes, all in one step before processing
+        //tables
+        
+        allAttributes.add(attrib);
+        
+        switch (attrib.getType()) {
+            case exclude:
+                excludes.add(attrib);
+                if (attrib.getTable().isEmpty()){
+                    //do not currently handle exclude of column
+                    //names only
+                }
+                else {
+                    if (attrib.getColumn().isEmpty()){
+                        //exclude table
+                        getTableConfig(attrib.getTable()).setExcludeTable(Boolean.FALSE);
+                    }
+                    else {
+                        //exclude specific column
+                        getTableConfig(attrib.getTable()).addExcludedColumn(attrib.getColumn());
+                    }
+                }
+                break;
+            case include:
+                includes.add(attrib);
+                if (attrib.getTable().isEmpty()){
+                    //do not currently handle include of column
+                    //names only
+                }
+                else {
+                    if (attrib.getColumn().isEmpty()){
+                        //include table (this is default)
+                        getTableConfig(attrib.getTable()).setExcludeTable(Boolean.FALSE);
+                    }
+                    else {
+                        //include specific column (this is default)
+                        getTableConfig(attrib.getTable()).addIncludedColumn(attrib.getColumn());
+                    }
+                }
+                break;
+            case tableprefix:
+                setTablePrefix(attrib.getValue());
+                break;
+            case tablepostfix:
+                setTablePostfix(attrib.getValue());
+                break;
+            case columnprefix:
+                setColumnPrefix(attrib.getValue());
+                break;
+            case columnpostfix:
+                setColumnPostfix(attrib.getValue());
+                break;
+            case auditinsert:
+                getTableConfig(attrib.getTable()).setHasInsertTrigger(attrib.getBooleanValue());
+                break;
+            case auditupdate:
+                getTableConfig(attrib.getTable()).setHasUpdateTrigger(attrib.getBooleanValue());
+                break;
+            case auditdelete:
+                getTableConfig(attrib.getTable()).setHasDeleteTrigger(attrib.getBooleanValue());
+                break;
+            case unknown:
+                break;
+        }
+    }
+    
+    void applyAttributes(){
+        
+        //apply excludes
+        //apply includes
+        //apply everything else
+    }
+    
+    void addTable(TableDef tableDef){
+        
+        
+    }
+    
+    void addTables(List<TableDef> tablesDefs){
+        
+        for ( TableDef tableDef : tablesDefs){
+            addTable(tableDef);
+        }
+        
     }
     
     void addExistingAuditTable (String auditTableName){
@@ -129,7 +235,7 @@ public class ConfigSource {
     }
     
     String getTablePostfix() {
-        return idMetaData.convertId(tablePostfix);
+        return tablePostfix;
     }
 
     void setTablePostfix(String tablePostfix) {
@@ -137,7 +243,7 @@ public class ConfigSource {
     }
 
     String getTablePrefix() {
-        return idMetaData.convertId(tablePrefix);
+        return tablePrefix;
     }
 
     void setTablePrefix(String tablePrefix) {
@@ -145,7 +251,7 @@ public class ConfigSource {
     }
 
     String getColumnPostfix() {
-        return idMetaData.convertId(columnPostfix);
+        return columnPostfix;
     }
 
     //not supported - can wreak havok with table ids
@@ -155,7 +261,7 @@ public class ConfigSource {
     }
 
     String getColumnPrefix() {
-        return idMetaData.convertId(columnPrefix);
+        return columnPrefix;
     }
 
     //not supported - can wreak havoc with table ids

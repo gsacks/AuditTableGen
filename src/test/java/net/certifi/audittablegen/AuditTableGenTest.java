@@ -93,7 +93,7 @@ public class AuditTableGenTest {
         when(rs2.next()).thenReturn(true, false);
         when(rs2.getString("TABLE_SCHEM")).thenReturn("fakeSchema");
         when(rs2.getString("TABLE_CATALOG")).thenReturn("fakeCatalogAgain");
-        when(dmr.hasConfigSource()).thenReturn(true);
+        when(dmr.hasAuditConfigTable()).thenReturn(true);
         String result = atg.getDataSourceInfo();
         verify(rs, times(2)).next();
         verify(rs2, times(2)).next();
@@ -171,7 +171,7 @@ public class AuditTableGenTest {
         atg.dmr = dmr;
         atg.initialized = true;
         String testConfigSQL = "create auditConfig and stuff";
-        when(dmr.hasConfigSource()).thenReturn(false);
+        when(dmr.hasAuditConfigTable()).thenReturn(false);
         when(dmr.getCreateConfigSQL()).thenReturn(testConfigSQL);
         when(dmr.validateCreateConfig()).thenReturn(true);
         Boolean result = atg.updateAuditTables();
@@ -191,7 +191,7 @@ public class AuditTableGenTest {
         atg.dmr = dmr;
         atg.initialized = true;
         String testUpdateSQL = "create a bunch of zz_ table";
-        when(dmr.hasConfigSource()).thenReturn(true);
+        when(dmr.hasAuditConfigTable()).thenReturn(true);
         when(dmr.getUpdateSQL()).thenReturn(testUpdateSQL);
         when(dmr.validateUpdate()).thenReturn(true);
         Boolean result = atg.updateAuditTables();

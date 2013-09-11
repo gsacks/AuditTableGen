@@ -8,7 +8,15 @@ import com.google.common.base.Throwables;
 import java.sql.*;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.logging.Level;
 import javax.sql.DataSource;
+import liquibase.Liquibase;
+import liquibase.database.Database;
+import liquibase.database.DatabaseFactory;
+import liquibase.database.jvm.JdbcConnection;
+import liquibase.exception.DatabaseException;
+import liquibase.exception.LiquibaseException;
+import liquibase.resource.FileSystemResourceAccessor;
 import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.commons.dbcp.BasicDataSource;
 import org.slf4j.Logger;
@@ -28,8 +36,7 @@ class GenericDMR implements DataSourceDMR {
     String verifiedSchema;
     String unverifiedAuditConfigTable = "auditconfig";
     String verifiedAuditConfigTable;
-    //ConfigSource configSource;
-    IdentifierMetaData idMetaData;
+    //IdentifierMetaData idMetaData;
    
     
     /**
@@ -57,13 +64,13 @@ class GenericDMR implements DataSourceDMR {
         Connection conn = ds.getConnection();
         DatabaseMetaData dmd = conn.getMetaData();
         databaseProduct = dmd.getDatabaseProductName();
-        idMetaData = new IdentifierMetaData();
+        //idMetaData = new IdentifierMetaData();
 
         //storing this data for potential future use.
         //not using it for anything currently
-        idMetaData.setStoresLowerCaseIds(dmd.storesLowerCaseIdentifiers());
-        idMetaData.setStoresMixedCaseIds(dmd.storesMixedCaseIdentifiers());
-        idMetaData.setStoresUpperCaseIds(dmd.storesUpperCaseIdentifiers());
+        //idMetaData.setStoresLowerCaseIds(dmd.storesLowerCaseIdentifiers());
+        //idMetaData.setStoresMixedCaseIds(dmd.storesMixedCaseIdentifiers());
+        //idMetaData.setStoresUpperCaseIds(dmd.storesUpperCaseIdentifiers());
 
         unverifiedSchema = schema;
 
@@ -102,109 +109,89 @@ class GenericDMR implements DataSourceDMR {
      * @return 
      */
     @Override
-    public Boolean hasConfigSource (){
+    public Boolean hasAuditConfigTable (){
         
-        return ( (getAuditConfigTable() != null) ? true : false );
+        return ( (getAuditConfigTableName() != null) ? true : false );
         
     }
    
+    
+    @Override
+    public void createAuditConfigTable() {
+        
+        try {
+            Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(dataSource.getConnection()));
+            String schema = getSchema();
+            if (null != schema) {
+                database.setDefaultSchemaName(schema);
+            }
+            Liquibase liquibase = new Liquibase("src/main/resources/changesets/changeset-init-config.xml", new FileSystemResourceAccessor(), database);
+            liquibase.update(null);
+            database.close();
+        } catch (SQLException ex) {
+            logger.error("Error genereating audit configuration tables", ex);
+        } catch (DatabaseException ex) {
+            logger.error("Error genereating audit configuration tables", ex);
+        } catch (LiquibaseException ex) {
+            logger.error("Error genereating audit configuration tables", ex);
+        }
+  
+    }
+    
+    public void createAuditConfigTable2() {
+        
+        StringBuilder builder  = new StringBuilder();
+        
+        builder.append("create table ").append(this.unverifiedAuditConfigTable).append("(").append(System.lineSeparator());
+        builder.append("...the rest of theh create script...this will generate an error");
+        
+        try (Connection conn = dataSource.getConnection()) {
+            String schema = getSchema();
+            if (null != schema) {
+                conn.setSchema(schema);
+            }
+
+            Statement stmt = conn.createStatement();
+            stmt.executeUpdate(builder.toString());
+            
+            stmt.close();
+        } catch (SQLException ex) {
+            logger.error("Error genereating audit configuration tables", ex);
+        }
+        
+    }
+
+    
     /**
      * Read the configuration attributes from the audit configuration
-     * table in the target database/schema and store in the param
-     * configSource
-     * 
-     * @param configSource 
+     * table in the target database/schema and return as a list
+     *
+     * @return A list of ConfigAttribute objects or an empty list if none are found.
      */
-    void loadConfigAttributes(ConfigSource configSource){
+    @Override
+    public List getConfigAttributes(){
         
         StringBuilder builder = new StringBuilder();
         builder.append("select attribute, table, column, value from ").append(verifiedAuditConfigTable);
                 
+        List<ConfigAttribute> attributes = new ArrayList();
         try {
             
             Connection conn = dataSource.getConnection();
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(builder.toString());
-            String table;
-            String column;
-            String value;
             
             while (rs.next()){
                 //load attributes into configSource
+                ConfigAttribute attrib = new ConfigAttribute();
+                attrib.setAttribute(rs.getString("attribute"));
+                attrib.setTable(rs.getString("table"));
+                attrib.setColumn(rs.getString("column"));
+                attrib.setValue(rs.getString("value"));
                 
-                //initially not worrying about wildcards.
-                //TODO handle regexp match in ConfigSource.
-                String attribute = rs.getString("attribute");
-                if (attribute.equalsIgnoreCase("exclude")){
-                    //parse exclude attribute
-                    table = rs.getString("table").trim();
-                    column = rs.getString("column").trim();
-                    if (table.isEmpty()){
-                        logger.error("exclude attribute with no table name is not currently supported");
-                    }
-                    else if (column.isEmpty()){
-                        configSource.addExcludedTable(table);
-                    }
-                    else {
-                        configSource.addExcludedColumn(table, column);
-                    }
-                }
+                attributes.add(attrib);
                 
-                //all columns are included by default, unless specifically
-                //excluded.  This is here to handle overriding a
-                //regexp match in the exclude list.
-                //TODO implement regexp match in ConfigSource.
-                else if (attribute.equalsIgnoreCase("include")){
-                    //parse include attribute
-                    table = rs.getString("table").trim();
-                    column = rs.getString("column").trim();
-                    configSource.addIncludedColumn(table, column);         
-                }
-                else if (attribute.equalsIgnoreCase("tableprefix")){
-                    //parse table prefix attribute
-                    configSource.setTablePrefix(rs.getString("value").trim());
-                }
-                else if (attribute.equalsIgnoreCase("tablepostfix")){
-                    //parse table postfix attribute
-                    configSource.setTablePostfix(rs.getString("value").trim());
-                }
-                else if (attribute.equalsIgnoreCase("columnprefix")){
-                    //parse column prefix attribute
-                    configSource.setColumnPrefix(rs.getString("value").trim());
-                }
-                else if (attribute.equalsIgnoreCase("columnpostfix")){
-                    //parse column postfix attribute
-                    configSource.setColumnPostfix(rs.getString("value").trim());
-                }
-                
-                //these are unlikely to be used.  Value of 'false' turns the
-                //trigger off.  Any other value is true.  If not set here, the
-                //default is true for all triggers.
-                else if (attribute.equalsIgnoreCase("auditinsert")){
-                    //parse audit insert attribute
-                    table = rs.getString("table").trim();
-                    configSource.ensureTableConfig(table);
-                    value = rs.getString("value").toUpperCase().trim();
-                    configSource.getTableConfig(table)
-                            .setHasInsertTrigger(value.equals("FALSE") ? false : true);
-                }
-                 else if (attribute.equalsIgnoreCase("auditupdate")){
-                    //parse audit update attribute
-                    table = rs.getString("table").trim();
-                    configSource.ensureTableConfig(table);
-                    value = rs.getString("value").toUpperCase().trim();
-                    configSource.getTableConfig(table)
-                            .setHasUpdateTrigger(value.equals("FALSE") ? false : true);
-                }
-                 else if (attribute.equalsIgnoreCase("auditdelete")){
-                    //parse audit delete attribute
-                    table = rs.getString("table").trim();
-                    configSource.ensureTableConfig(table);
-                    value = rs.getString("value").toUpperCase().trim();
-                    configSource.getTableConfig(table)
-                            .setHasDeleteTrigger(value.equals("FALSE") ? false : true); 
-                }
-            }         
+            }     
             
             rs.close();
             stmt.close();
@@ -213,18 +200,21 @@ class GenericDMR implements DataSourceDMR {
         } catch (SQLException ex) {
             logger.error("Error retrieving audit configuration" + ex.getMessage());
         }
+        
+        return attributes;
              
     }
     
     /**
-     * Load column metaData for all existing tables and audit tables
+     * Get List of TableDef objects for all tables
      * in the targeted database/schema
      * 
-     * @param configSource 
+     * @return ArrayList of TableDef objects or an empty list if none are found.
      */
-    void loadConfigTables (ConfigSource configSource){
+    @Override
+    public List getTables (){
      
-        String table;
+        List<TableDef> tables = new ArrayList<>();
         
         try (Connection conn = dataSource.getConnection()){
             
@@ -232,70 +222,51 @@ class GenericDMR implements DataSourceDMR {
             ResultSet rs = dmd.getTables(null, verifiedSchema, null, new String[]{"TABLE"});
             
             while (rs.next()){
-                table = rs.getString("TABLE_NAME").trim();
+                TableDef tableDef = new TableDef();
+                tableDef.setName(rs.getString("TABLE_NAME").trim());
                 
-                //ToDo: handle case where table full name matches the prefix or postfi
-                if ( table.toUpperCase().startsWith(configSource.getTablePrefix().toUpperCase())
-                     && table.toUpperCase().endsWith(configSource.getTablePostfix().toUpperCase())){
-                    configSource.addExistingAuditTable(table);
-                }
-                else {
-                    configSource.ensureTableConfig(table);
-                    
-                    //just in case audit config has set up the table with the
-                    //wrong case sensitivity, update the table name with the
-                    //value returned from the db
-                    TableConfig tc = configSource.getTableConfig(table);
-                    tc.setTableName(table);
-                }
+//                //ToDo: handle case where table full name matches the prefix or postfi
+//                if ( table.toUpperCase().startsWith(configSource.getTablePrefix().toUpperCase())
+//                     && table.toUpperCase().endsWith(configSource.getTablePostfix().toUpperCase())){
+//                    configSource.addExistingAuditTable(table);
+//                }
+//                else {
+//                    configSource.ensureTableConfig(table);
+//                    
+//                    //just in case audit config has set up the table with the
+//                    //wrong case sensitivity, update the table name with the
+//                    //value returned from the db
+//                    TableConfig tc = configSource.getTableConfig(table);
+//                    tc.setTableName(table);
+//                }
             }
             
             rs.close();
             
         } catch (SQLException e){
             logger.error("SQL error retrieving table list: ", e);
-            return;
+            return null;
         }
         
-        //populate table meta data
-        for ( Map.Entry <String, TableConfig> entry : configSource.existingTables.entrySet()){
-            entry.getValue().setColumns(getColumnMetaDataForTable(entry.getValue().getTableName()));
+        for ( TableDef tableDef : tables){
+            tableDef.setColumns(getColumns(tableDef.getName()));
         }
         
-        //populate existing audit table meta data
-        for ( Map.Entry <String, TableConfig> entry : configSource.existingAuditTables.entrySet()){
-            entry.getValue().setColumns(getColumnMetaDataForTable(entry.getValue().getTableName()));
-        }
-        
-        return;
+        return tables;
  
     }
     
-    String getAuditTableSql(ConfigSource configSource, String tableName){
+    /**
+     * Get List of ColumnDef objects for all tables
+     * in the targeted database/schema
+     * 
+     * @param tableName
+     * @return ArrayList of ColumnDef objects or an empty list if none are found.
+     */
+    @Override
+    public List getColumns (String tableName){
         
-        String sql;
-        
-        String auditTableName =
-                configSource.getTablePrefix()
-                + tableName
-                + configSource.getTablePostfix();
-        
-        //check if table already exists
-        Map existingAuditTables = new CaseInsensitiveMap(configSource.existingAuditTables);
-        
-        if (configSource.existingAuditTables.containsKey(auditTableName)){
-            sql = getAuditTableModifySql(configSource, tableName);
-        }
-        else {
-            sql = getAuditTableCreateSql(configSource, tableName);
-        }
-        
-        return sql;
-    }
-    
-    Map getColumnMetaDataForTable (String tableName){
-        
-        Map columns = new HashMap<>();
+        List columns = new ArrayList<>();
         
         try {
             Connection conn = dataSource.getConnection();
@@ -310,11 +281,16 @@ class GenericDMR implements DataSourceDMR {
                 throw new RuntimeException("No results for DatabaseMetaData.getColumns(" + verifiedSchema + "." + tableName + ")");
             }
             while (rs.next()){
+                ColumnDef columnDef = new ColumnDef();
                 Map columnMetaData = new CaseInsensitiveMap();
                 for (int i = 1; i <= metaDataColumnCount; i++){
                     columnMetaData.put(rsmd.getColumnName(i), rs.getString(i));
                 }
-                columns.put(rs.getString("COLUMN_NAME"), columnMetaData);                        
+                columnDef.setName(rs.getString("COLUMN_NAME"));
+                columnDef.setType(rs.getString("TYPE_NAME"));
+                columnDef.setSize(rs.getInt("COLUMN_SIZE"));
+                columnDef.setDecimalSize(rs.getInt("DECIMAL_SIZE"));
+                columnDef.setSourceMeta(columnMetaData);
             }
             
         }
@@ -325,82 +301,8 @@ class GenericDMR implements DataSourceDMR {
         return columns;
         
     }
-    /**
-     * LEGACY OF EARLY DEVELOPMENT - NOT USED
-     * Copy column metaData from the source table over to the new audit
-     * table.  Exclude or include columns in the audit table according
-     * the the table configuration data.
-     * 
-     * @param configSource
-     * @param tableToAudit
-     * @return 
-     */
-    Map getNewAuditTableColumnMetaData (ConfigSource configSource, String tableToAudit){
-        
-        TableConfig tc = configSource.getTableConfig(tableToAudit);
-        
-        Map<String, Map<String, String>> auditTableColumns = new HashMap<String, Map<String, String>>();
-        
-        for (Map.Entry<String, Map<String, String>> entry : tc.getColumns().entrySet() ){
-            
-            //ToDo: make this search look for regexp
-            //ToDo: make this case insensitive
-            String columnName = entry.getKey();
-            if (!tc.excludedColumns.containsKey(columnName)
-                || tc.includedColumns.containsKey(columnName) ){
-                //include this column in the audit table
-                String auditColumnName = configSource.getColumnPrefix()
-                        + columnName + configSource.getColumnPostfix();
-                Map auditColumnMetaData = new CaseInsensitiveMap();
-                
-                //copy metaData from primary table/column map to audit table/ciolumn map
-                for (Map.Entry<String, String> metaDataEntry : entry.getValue().entrySet() ){
-                    String metaDataKey = metaDataEntry.getKey();
-                    String metaDataValue = metaDataEntry.getValue();
-                    if (metaDataKey.equalsIgnoreCase("IS_AUTOINCREMENT")){
-                        metaDataValue="NO";
-                    }
-                    if (metaDataKey.equalsIgnoreCase("IS_GENERATEDCOLUMN")){
-                        metaDataValue="NO";
-                    }
-                    auditColumnMetaData.put(metaDataKey, metaDataValue);
-                }
-                
-                auditTableColumns.put(auditColumnName, auditColumnMetaData);
-            }
-            else {
-                logger.info("Table: %s  Column: %s excluded", tableToAudit, entry.getKey());                
-            }
-        }
-        
-        return auditTableColumns;
-        
-    }
-        
-    String getAuditTableCreateSql(ConfigSource configSource, String tableName){
-        
-        StringBuilder builder = new StringBuilder();
-        
-        builder.append("create table ").append(tableName).append(System.lineSeparator());
-        
-        
-        
-        return builder.toString();
-    }
-    
-    String getAuditTableModifySql(ConfigSource configSource, String tableName){
-        
-        StringBuilder builder = new StringBuilder();
-        
-        TableConfig tc = configSource.getTableConfig(tableName);
-        
-        //TODO everything.
-        
-        
-        return builder.toString();
-    }
 
-    @Override
+   @Override
     public void setSchema(String unverifiedSchema) {
 
         this.unverifiedSchema = unverifiedSchema;
@@ -438,7 +340,7 @@ class GenericDMR implements DataSourceDMR {
     }
     
     @Override
-    public void setAuditConfigTable (String unverifiedTable){
+    public void setAuditConfigTableName (String unverifiedTable){
         
         this.unverifiedAuditConfigTable = unverifiedTable;
         this.verifiedAuditConfigTable = null;
@@ -484,93 +386,161 @@ class GenericDMR implements DataSourceDMR {
     }
     
     @Override
-    public String getAuditConfigTable(){
+    public String getAuditConfigTableName(){
          if (verifiedAuditConfigTable == null
                 && unverifiedAuditConfigTable != null) {
-            setAuditConfigTable(unverifiedAuditConfigTable);
+            setAuditConfigTableName(unverifiedAuditConfigTable);
         }
 
         return verifiedAuditConfigTable;
     }
 
     @Override
-    public String getCreateConfigSQL() {
+    public void readDBChangeList(List<DBChangeUnit> units) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
-    public void executeCreateConfigSQL() {
+    public void executeChanges() {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
-    public Boolean validateCreateConfig() {
+    public void executeDBChangeList(List<DBChangeUnit> units) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
+
+    @Override
+    public void purgeDBChanges() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+    
+    
+
+//    String getAuditTableSql(ConfigSource configSource, String tableName){
+//        
+//        String sql;
+//        
+//        String auditTableName =
+//                configSource.getTablePrefix()
+//                + tableName
+//                + configSource.getTablePostfix();
+//        
+//        //check if table already exists
+//        Map existingAuditTables = new CaseInsensitiveMap(configSource.existingAuditTables);
+//        
+//        if (configSource.existingAuditTables.containsKey(auditTableName)){
+//            sql = getAuditTableModifySql(configSource, tableName);
+//        }
+//        else {
+//            sql = getAuditTableCreateSql(configSource, tableName);
+//        }
+//        
+//        return sql;
+//    }
+    
+    /**
+     * LEGACY OF EARLY DEVELOPMENT - NOT USED
+     * Copy column metaData from the source table over to the new audit
+     * table.  Exclude or include columns in the audit table according
+     * the the table configuration data.
+     * 
+     * @param configSource
+     * @param tableToAudit
+     * @return 
+     */
+//    Map getNewAuditTableColumnMetaData (ConfigSource configSource, String tableToAudit){
+//        
+//        TableConfig tc = configSource.getTableConfig(tableToAudit);
+//        
+//        Map<String, Map<String, String>> auditTableColumns = new HashMap<String, Map<String, String>>();
+//        
+//        for (Map.Entry<String, Map<String, String>> entry : tc.getColumns().entrySet() ){
+//            
+//            //ToDo: make this search look for regexp
+//            //ToDo: make this case insensitive
+//            String columnName = entry.getKey();
+//            if (!tc.excludedColumns.containsKey(columnName)
+//                || tc.includedColumns.containsKey(columnName) ){
+//                //include this column in the audit table
+//                String auditColumnName = configSource.getColumnPrefix()
+//                        + columnName + configSource.getColumnPostfix();
+//                Map auditColumnMetaData = new CaseInsensitiveMap();
+//                
+//                //copy metaData from primary table/column map to audit table/ciolumn map
+//                for (Map.Entry<String, String> metaDataEntry : entry.getValue().entrySet() ){
+//                    String metaDataKey = metaDataEntry.getKey();
+//                    String metaDataValue = metaDataEntry.getValue();
+//                    if (metaDataKey.equalsIgnoreCase("IS_AUTOINCREMENT")){
+//                        metaDataValue="NO";
+//                    }
+//                    if (metaDataKey.equalsIgnoreCase("IS_GENERATEDCOLUMN")){
+//                        metaDataValue="NO";
+//                    }
+//                    auditColumnMetaData.put(metaDataKey, metaDataValue);
+//                }
+//                
+//                auditTableColumns.put(auditColumnName, auditColumnMetaData);
+//            }
+//            else {
+//                logger.info("Table: %s  Column: %s excluded", tableToAudit, entry.getKey());                
+//            }
+//        }
+//        
+//        return auditTableColumns;
+//        
+//    }
+        
+//    String getAuditTableCreateSql(ConfigSource configSource, String tableName){
+//        
+//        StringBuilder builder = new StringBuilder();
+//        
+//        builder.append("create table ").append(tableName).append(System.lineSeparator());
+//        
+//        
+//        
+//        return builder.toString();
+//    }
+//    
+//    String getAuditTableModifySql(ConfigSource configSource, String tableName){
+//        
+//        StringBuilder builder = new StringBuilder();
+//        
+//        TableConfig tc = configSource.getTableConfig(tableName);
+//        
+//        //TODO everything.
+//        
+//        
+//        return builder.toString();
+//    }
 
     //@Override
-    public String getUpdateSQL(ConfigSource configSource) {
-        
-        StringBuilder builder = new StringBuilder();
-          
-        TableConfig tc;
-        TableConfig atc;
-        Iterator iter = configSource.existingTables.entrySet().iterator();
-        while (iter.hasNext()){
-            Entry e = (Entry) iter.next();
-            tc = (TableConfig) e.getValue();
-            String key = (String) e.getKey();
-            String auditKey = 
-                    configSource.getTablePrefix()
-                    + key
-                    + configSource.getTablePostfix();
-            atc = configSource.getExistingAuditTable(auditKey); 
-            
-            //do magic SQL generation here
-            ChangeSourceFactory changeSourceFactory = new ChangeSourceFactory(configSource);
-            
-            //TO DO - get all of the changes and apply sql in a loop    
-            
-            
-            
-        }
-        
-        return builder.toString();
+//    public String getUpdateSQL(ConfigSource configSource) {
+//        
+//        StringBuilder builder = new StringBuilder();
+//          
+//        TableConfig tc;
+//        TableConfig atc;
+//        Iterator iter = configSource.existingTables.entrySet().iterator();
+//        while (iter.hasNext()){
+//            Entry e = (Entry) iter.next();
+//            tc = (TableConfig) e.getValue();
+//            String key = (String) e.getKey();
+//            String auditKey = 
+//                    configSource.getTablePrefix()
+//                    + key
+//                    + configSource.getTablePostfix();
+//            atc = configSource.getExistingAuditTable(auditKey); 
+//            
+//            //do magic SQL generation here
+//            ChangeSourceFactory changeSourceFactory = new ChangeSourceFactory(configSource);
+//            
+//            //TO DO - get all of the changes and apply sql in a loop    
+//                        
+//        }
+//        
+//        return builder.toString();
+//
+//    }
 
-    }
-
-    @Override
-    public void executeUpdateSQL() {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public Boolean validateUpdate() {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public ConfigSource getConfigSource() {
-        
-        ConfigSource configSource = new ConfigSource(idMetaData);
-
-        String schema = this.getSchema();
-        if (schema == null){
-            logger.error("Unable to generate ConfigSource.  No valid schema is set");
-            return null;
-        }
-                
-        String auditConfig = this.getAuditConfigTable();
-        if (auditConfig == null){
-            logger.error("Unable to generate ConfigSource.  No auditConfig table exists");
-            return null;
-        }
-
-        this.loadConfigAttributes(configSource);
-        this.loadConfigTables(configSource);
-        
-        return configSource;
-        
-    }
-     
 }

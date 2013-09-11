@@ -98,20 +98,20 @@ public class GenericDMRIT {
     }
 
     /**
-     * Test of hasConfigSource method, of class GenericDMR.
+     * Test of hasAuditConfigTable method, of class GenericDMR.
      */
     @Test
     public void testHasConfigSource() {
         System.out.println("loadConfigSource");
 
         //test the default values (should pass)
-        Boolean result = dmr.hasConfigSource();
+        Boolean result = dmr.hasAuditConfigTable();
         assertTrue(result);
         
         //test another value (should fail)
         dmr.unverifiedAuditConfigTable = "not_here";
         dmr.verifiedAuditConfigTable = null;
-        result = dmr.hasConfigSource();
+        result = dmr.hasAuditConfigTable();
         assertFalse(result);
     }
     
@@ -247,7 +247,7 @@ public class GenericDMRIT {
     }
 
     /**
-     * Test of setAuditConfigTable method, of class GenericDMR.
+     * Test of setAuditConfigTableName method, of class GenericDMR.
      */
     @Test
     public void testSetAuditConfigTable() {
@@ -255,21 +255,21 @@ public class GenericDMRIT {
 
         String unverifiedAuditConfigTable = "AuDitCONfig";
         dmr.verifiedAuditConfigTable = null;
-        dmr.setAuditConfigTable(unverifiedAuditConfigTable);
+        dmr.setAuditConfigTableName(unverifiedAuditConfigTable);
 
         assertEquals(dmr.unverifiedAuditConfigTable, unverifiedAuditConfigTable);
         assertNotNull(dmr.verifiedAuditConfigTable);       
     }
 
     /**
-     * Test of getAuditConfigTable method, of class GenericDMR.
+     * Test of getAuditConfigTableName method, of class GenericDMR.
      */
     @Test
     public void testGetAuditConfigTable() {
         System.out.println("getAuditConfigTable");
         dmr.unverifiedAuditConfigTable = "auditCONFIG";
         String expResult = "AUDITCONFIG";
-        String result = dmr.getAuditConfigTable();
+        String result = dmr.getAuditConfigTableName();
         assertEquals(expResult, result);
     }
     

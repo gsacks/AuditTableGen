@@ -101,7 +101,7 @@ public class GenericDMRTest {
     }
 
     /**
-     * Test of hasConfigSource method, of class GenericDMR.
+     * Test of hasAuditConfigTable method, of class GenericDMR.
      */
     @Test
     public void testHasConfigSource() throws SQLException {
@@ -110,7 +110,7 @@ public class GenericDMRTest {
         ResultSet rs = mock(ResultSet.class);
         //test the default values (should pass)
         dmr.verifiedAuditConfigTable = "AUDITCONFIG";
-        Boolean result = dmr.hasConfigSource();
+        Boolean result = dmr.hasAuditConfigTable();
         assertTrue(result);
         
         //test another value (should fail)
@@ -119,7 +119,7 @@ public class GenericDMRTest {
         dmr.unverifiedAuditConfigTable = "not_here";
         dmr.verifiedAuditConfigTable = null;
         dmr.verifiedSchema = null;
-        Boolean result2 = dmr.hasConfigSource();
+        Boolean result2 = dmr.hasAuditConfigTable();
         verify (dmd, times(1)).getTables(null, null, null, null);
         assertNull(dmr.verifiedAuditConfigTable);
         assertFalse(result2);
@@ -412,7 +412,7 @@ public class GenericDMRTest {
     }
 
     /**
-     * Test of setAuditConfigTable method, of class GenericDMR.
+     * Test of setAuditConfigTableName method, of class GenericDMR.
      */
     @Test
     public void testSetAuditConfigTable() throws SQLException {
@@ -429,18 +429,18 @@ public class GenericDMRTest {
         when (rs.getString("TABLE_NAME")).thenReturn("wrong_result","auditconfig");
 
         //1st pass
-        dmr.setAuditConfigTable(unverifiedAuditConfigTable);
+        dmr.setAuditConfigTableName(unverifiedAuditConfigTable);
         assertEquals(dmr.unverifiedAuditConfigTable, unverifiedAuditConfigTable);
         assertNull(dmr.verifiedAuditConfigTable);       
         
         //2nd pass
-        dmr.setAuditConfigTable(unverifiedAuditConfigTable);
+        dmr.setAuditConfigTableName(unverifiedAuditConfigTable);
         assertEquals(dmr.unverifiedAuditConfigTable, unverifiedAuditConfigTable);
         assertNotNull(dmr.verifiedAuditConfigTable); 
     }
 
     /**
-     * Test of getAuditConfigTable method, of class GenericDMR.
+     * Test of getAuditConfigTableName method, of class GenericDMR.
      */
     @Test
     public void testGetAuditConfigTable() throws SQLException {
@@ -451,7 +451,7 @@ public class GenericDMRTest {
         //1st pass
         String expResult = "AUDITCONFIG";
         dmr.verifiedAuditConfigTable = "AUDITCONFIG";
-        String result = dmr.getAuditConfigTable();        
+        String result = dmr.getAuditConfigTableName();        
         assertEquals(expResult, result);
         
         //2nd pass - this will call setSchema to verify the unvirified value
@@ -461,7 +461,7 @@ public class GenericDMRTest {
         when (dmd.getTables(null, "PUBLIC", null, null)).thenReturn(rs);
         when (rs.next()).thenReturn(true, false);
         when (rs.getString("TABLE_NAME")).thenReturn("auditconfig");
-        String result2 = dmr.getAuditConfigTable();
+        String result2 = dmr.getAuditConfigTableName();
         assertEquals("auditconfig", result2);
     }
     

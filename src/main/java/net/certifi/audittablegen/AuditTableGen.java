@@ -86,6 +86,14 @@ public class AuditTableGen {
         if (dmr != null){
             this.initialized = true;
         }
+        
+        if (schema != null && !schema.isEmpty()) {
+            dmr.setSchema(schema);
+            
+            if (dmr.getSchema() == null){
+                throw new RuntimeException ("Schema could not be found.");
+            }
+        }
 
     }
     
@@ -112,23 +120,21 @@ public class AuditTableGen {
             }
         }
         
-        if (!dmr.hasConfigSource()){
-            message = "Audit table configuration missing. Generating...";
+        if (!dmr.hasAuditConfigTable()){
+            message = "Audi configuration tables missing. Generating...";
             System.out.println(message);
             logger.info(message);
             
-            script = dmr.getCreateConfigSQL();
-            logger.info ("Attempting update of DB with SQL:");
-            logger.info (script);
-            dmr.executeCreateConfigSQL();
-            if (!dmr.validateCreateConfig()){
-                message = "Failed to generate audit configuration tables";
+            dmr.createAuditConfigTable();
+            
+            if (!dmr.hasAuditConfigTable()){
+                message = "Failed to generate audit configuration tables.";
                 System.out.println(message);
                 logger.error(message);
-                logger.error(script);
                 return false;
             }
-            else {
+            else 
+           {
                 message = "Audit configuratiion tables created.";
                 System.out.println(message);
                 logger.info(message);
@@ -136,24 +142,15 @@ public class AuditTableGen {
             }
         }
         else {
-            dmr.getConfigSource();
-            script = dmr.getUpdateSQL();
-            logger.info ("Attempting update of DB with SQL:");
-            logger.info (script);
-            dmr.executeUpdateSQL();
-            if (!dmr.validateUpdate()){
-                message = "Failed to generate audit table script.";
-                System.out.println(message);
-                logger.error(message);
-                logger.error(script);
-                return false;
-            }
-            else {
-                message = "Audit tables created.";
-                System.out.println(message);
-                logger.info(message);
-                return true;
-            }       
+            ConfigSource configSource = new ConfigSource();
+
+            configSource.addAtrributes(dmr.getConfigAttributes());
+            configSource.addTables(dmr.getTables());
+            configSource.applyAttributes();
+            
+            dmr.readDBChangeList(configSource.getDBChangeList());
+            dmr.executeChanges();
+            
         }
         
     }
@@ -198,7 +195,7 @@ public class AuditTableGen {
                 .append("Target Catalog: ").append(catalog).append(System.lineSeparator())
                 .append("Target Schema: ").append(schema).append(System.lineSeparator());
 
-       if (dmr.hasConfigSource()){
+       if (dmr.hasAuditConfigTable()){
            s.append("Has auditConfigSource table").append(System.lineSeparator());
        }
        
