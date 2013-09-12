@@ -8,6 +8,8 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import javax.sql.DataSource;
 import org.apache.commons.cli.CommandLine;
@@ -64,7 +66,8 @@ public class AuditTableGenTest {
         when(conn.getClientInfo()).thenReturn(clientProps);
         when(conn.getMetaData()).thenReturn(dmd);
         when(dmd.getDriverName()).thenReturn("mock-mock-mock");
-        
+
+        atg.schema = "";
         atg.initialize();
         //called once in method and once in GenericDMR constructor
         verify(dataSource, times(2)).getConnection();
@@ -170,12 +173,10 @@ public class AuditTableGenTest {
         DataSourceDMR dmr = mock(DataSourceDMR.class);
         atg.dmr = dmr;
         atg.initialized = true;
-        String testConfigSQL = "create auditConfig and stuff";
-        when(dmr.hasAuditConfigTable()).thenReturn(false);
-        when(dmr.getCreateConfigSQL()).thenReturn(testConfigSQL);
-        when(dmr.validateCreateConfig()).thenReturn(true);
+        when(dmr.hasAuditConfigTable()).thenReturn(false, true);
+        //when(dmr.setAuditConfigTableName(null))
         Boolean result = atg.updateAuditTables();
-        verify(dmr, times(1)).executeCreateConfigSQL();
+        verify(dmr, times(1)).createAuditConfigTable();
         assertEquals(true, result);
                 
     }
@@ -190,12 +191,15 @@ public class AuditTableGenTest {
         DataSourceDMR dmr = mock(DataSourceDMR.class);
         atg.dmr = dmr;
         atg.initialized = true;
-        String testUpdateSQL = "create a bunch of zz_ table";
+        List<ConfigAttribute> attribs = new ArrayList<>();
+        List<TableDef> defs = new ArrayList<>();
+        
         when(dmr.hasAuditConfigTable()).thenReturn(true);
-        when(dmr.getUpdateSQL()).thenReturn(testUpdateSQL);
-        when(dmr.validateUpdate()).thenReturn(true);
+        when(dmr.getConfigAttributes()).thenReturn(attribs);
+        when(dmr.getTables()).thenReturn(defs);
+
         Boolean result = atg.updateAuditTables();
-        verify(dmr, times(1)).executeUpdateSQL();
+        verify(dmr, times(1)).readDBChangeList(anyList());
         assertEquals(true, result);
                 
     }

@@ -108,7 +108,6 @@ public class AuditTableGen {
      */
     Boolean updateAuditTables() {
         
-        String script;
         String message;
         
         if (!this.initialized){
@@ -121,7 +120,7 @@ public class AuditTableGen {
         }
         
         if (!dmr.hasAuditConfigTable()){
-            message = "Audi configuration tables missing. Generating...";
+            message = "Audit configuration tables missing. Generating...";
             System.out.println(message);
             logger.info(message);
             
@@ -144,7 +143,7 @@ public class AuditTableGen {
         else {
             ConfigSource configSource = new ConfigSource();
 
-            configSource.addAtrributes(dmr.getConfigAttributes());
+            configSource.addAttributes(dmr.getConfigAttributes());
             configSource.addTables(dmr.getTables());
             
             ChangeSourceFactory factory = new ChangeSourceFactory(configSource);

@@ -18,8 +18,8 @@ import org.slf4j.LoggerFactory;
 public class ConfigSource {
     private static final Logger logger = LoggerFactory.getLogger(ConfigSource.class);
     
-    Map<String, TableConfig> existingTables;
-    Map<String, TableConfig> existingAuditTables;
+    //Map<String, TableConfig> existingTables;
+    //Map<String, TableConfig> existingAuditTables;
 
     List<TableDef> allTables; //list of all tables in the tartget db/schema
     List<ConfigAttribute> excludes; //only exclude attributes
@@ -31,8 +31,8 @@ public class ConfigSource {
     
     ConfigSource(){
         //this.idMetaData = idMetaData;
-        existingTables = new CaseInsensitiveMap();
-        existingAuditTables = new CaseInsensitiveMap();
+        //existingTables = new CaseInsensitiveMap();
+        //existingAuditTables = new CaseInsensitiveMap();
         dbAttribs = new ArrayList<>();
         triggerAttribs = new ArrayList<>();
         excludes = new ArrayList<>();
@@ -43,16 +43,16 @@ public class ConfigSource {
 
     }
     
-    void addAtrributes(List<ConfigAttribute> attributes){
+    void addAttributes(List<ConfigAttribute> attributes){
         
         for ( ConfigAttribute attrib : attributes){
             
-            addAtribute(attrib);
+            addAttribute(attrib);
             
         }
     }
 
-    void addAtribute(ConfigAttribute attrib) {
+    void addAttribute(ConfigAttribute attrib) {
         
         switch (attrib.getType()) {
             case exclude:

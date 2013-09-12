@@ -224,6 +224,7 @@ class GenericDMR implements DataSourceDMR {
             while (rs.next()){
                 TableDef tableDef = new TableDef();
                 tableDef.setName(rs.getString("TABLE_NAME").trim());
+                tables.add(tableDef);
                 
 //                //ToDo: handle case where table full name matches the prefix or postfi
 //                if ( table.toUpperCase().startsWith(configSource.getTablePrefix().toUpperCase())
@@ -291,6 +292,8 @@ class GenericDMR implements DataSourceDMR {
                 columnDef.setSize(rs.getInt("COLUMN_SIZE"));
                 columnDef.setDecimalSize(rs.getInt("DECIMAL_SIZE"));
                 columnDef.setSourceMeta(columnMetaData);
+                
+                columns.add(columnDef);
             }
             
         }
