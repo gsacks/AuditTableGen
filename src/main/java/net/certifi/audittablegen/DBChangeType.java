@@ -13,8 +13,7 @@ public enum DBChangeType {
     end,
     createTable,
     alterTable,
-    addColumn, //use on both table and trigger generation
-    renameColumn,
+    addColumn,
     alterColumnType,
     alterColumnSize,
     alterColumnName,
@@ -23,6 +22,6 @@ public enum DBChangeType {
     fireOnInsert,
     fireOnUpdate,
     fireOnDelete,
-    noFireOnColumn,
+    addTriggerColumn,
     notSet;  
 }

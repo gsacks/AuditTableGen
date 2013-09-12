@@ -130,13 +130,31 @@ public class ChangeSourceFactoryTest {
     @Test
     public void testGetDBChangeList_TableDef() {
         System.out.println("getDBChangeList");
-        TableDef baseTableDef = null;
-        ChangeSourceFactory instance = null;
+        
+        //set-up using real objects
+        TableDef td = new TableDef();
+        td.name = "Table1";
+        ColumnDef cd = new ColumnDef();
+        cd.name = "Table1Id";
+        cd.type = "integer";
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "Data";
+        cd.type = "varchar";
+        cd.size = 255;
+        td.addColumn(cd);
+        configSource.addTable(td);
+
+        ChangeSourceFactory instance = new ChangeSourceFactory(configSource);
+        
         List expResult = null;
-        List result = instance.getDBChangeList(baseTableDef);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        List<DBChangeUnit> result = instance.getDBChangeList(td);
+        for ( DBChangeUnit unit : result){
+            //these are the real test results...
+            System.out.println(unit.toString());
+        }
+        assertNotNull(result);
+
     }
 
     /**
@@ -145,26 +163,62 @@ public class ChangeSourceFactoryTest {
     @Test
     public void testGetDBChangeList_0args() {
         System.out.println("getDBChangeList");
-        ChangeSourceFactory instance = null;
-        List expResult = null;
-        List result = instance.getDBChangeList();
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+
+        //set-up using real objects
+        TableDef td = new TableDef();
+        td.name = "Table1";
+        ColumnDef cd = new ColumnDef();
+        cd.name = "Table1Id";
+        cd.type = "integer";
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "Data";
+        cd.type = "varchar";
+        cd.size = 255;
+        td.addColumn(cd);
+        configSource.addTable(td);
+
+        ChangeSourceFactory instance = new ChangeSourceFactory(configSource);
+        List<DBChangeUnit> result = instance.getDBChangeList();
+        for ( DBChangeUnit unit : result){
+            //these are the real test results...
+            System.out.println(unit.toString());
+        }
+        assertNotNull(result);
     }
+
 
     /**
      * Test of getDBChangeList method, of class ChangeSourceFactory.
      */
     @Test
     public void testGetDBChangeList_String() {
+        
         System.out.println("getDBChangeList");
-        String tableName = "";
-        ChangeSourceFactory instance = null;
-        List expResult = null;
-        List result = instance.getDBChangeList(tableName);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+       //set-up using real objects
+        TableDef td = new TableDef();
+        td.name = "Table1";
+        ColumnDef cd = new ColumnDef();
+        cd.name = "Table1Id";
+        cd.type = "integer";
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "Data";
+        cd.type = "varchar";
+        cd.size = 255;
+        td.addColumn(cd);
+        configSource.addTable(td);
+
+        ChangeSourceFactory instance = new ChangeSourceFactory(configSource);
+        List<DBChangeUnit> result = instance.getDBChangeList("Table1");
+        for ( DBChangeUnit unit : result){
+            //these are the real test results...
+            System.out.println(unit.toString());
+        }
+        assertNotNull(result);
+        assertTrue (result.size() > 0 );
+        //this is fragile.  result size might change...
+        //assertEquals(14, result.size());
+        
     }
 }

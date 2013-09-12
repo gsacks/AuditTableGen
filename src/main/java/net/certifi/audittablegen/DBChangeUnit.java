@@ -106,5 +106,65 @@ public class DBChangeUnit {
         this.identity = identity;
     }
     
+    @Override
+    public String toString(){
     
+        StringBuilder builder = new StringBuilder();
+        builder.append("[").append(changeType.name()).append(" ");
+        
+        switch (changeType){
+            case begin:
+            case end:
+                break;
+            case createTable:
+            case alterTable:
+                builder.append("table=").append(this.getTableName()).append(" ");
+                break;
+            case addColumn:
+            case alterColumnSize:
+            case alterColumnType:
+                builder.append("table=").append(this.getTableName()).append(" ");
+                builder.append("column=").append(this.getColumnName()).append(" ");
+                builder.append("datatype=").append(this.getDataType()).append(" ");
+                builder.append("size=").append(this.getSize()).append(" ");
+                builder.append("decimalsize=").append(this.getDecimalSize()).append(" ");
+                builder.append("identity=").append(this.getIdentity().toString()).append(" ");
+                break;
+            case alterColumnName:
+                builder.append("table=").append(this.getTableName()).append(" ");
+                builder.append("column=").append(this.getColumnName()).append(" ");
+                builder.append("newname=").append(this.getNewColumnName()).append(" ");
+                builder.append("datatype=").append(this.getDataType()).append(" ");
+                builder.append("size=").append(this.getSize()).append(" ");
+                builder.append("decimalsize=").append(this.getDecimalSize()).append(" ");
+                builder.append("identity=").append(this.getIdentity().toString()).append(" ");
+                break;
+            case createTriggers:
+            case dropTriggers:
+                builder.append("table=").append(this.getTableName()).append(" ");
+                builder.append("audittable=").append(this.getAuditTableName()).append(" ");
+                break;
+            case addTriggerColumn:
+                builder.append("table=").append(this.getTableName()).append(" ");
+                builder.append("audittable=").append(this.getAuditTableName()).append(" ");
+                builder.append("column=").append(this.getColumnName()).append(" ");
+                builder.append("fires=").append(this.getFiresTrigger().toString()).append(" ");
+                break;
+            case fireOnDelete:
+            case fireOnInsert:
+            case fireOnUpdate:
+                builder.append("table=").append(this.getTableName()).append(" ");
+                builder.append("audittable=").append(this.getAuditTableName()).append(" ");
+                builder.append("fires=").append(this.getFiresTrigger()).append(" ");
+                break;
+            case notSet:
+            default:
+                break;
+        }
+        
+        builder.append("]");
+        
+        return builder.toString();
+        
+    }
 }

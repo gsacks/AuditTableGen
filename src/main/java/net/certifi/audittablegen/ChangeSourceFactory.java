@@ -201,6 +201,7 @@ public class ChangeSourceFactory {
             //create id column
             workUnit = new DBChangeUnit(DBChangeType.addColumn);
             workUnit.setColumnName(auditTableName + "Id");
+            workUnit.setTableName(auditTableName);
             workUnit.setDataType("integer");
             workUnit.setIdentity(Boolean.TRUE);
             tableChangeUnits.add(workUnit);
@@ -209,6 +210,7 @@ public class ChangeSourceFactory {
             for (ColumnDef baseColumn : baseTableDef.getColumns()) {
                 workUnit = new DBChangeUnit(DBChangeType.addColumn);
                 workUnit.setColumnName(baseColumn.getName());
+                workUnit.setTableName(auditTableName);
                 workUnit.setDataType(baseColumn.getType());
                 workUnit.setSize(baseColumn.getSize());
                 workUnit.setDecimalSize(baseColumn.getDecimalSize());
@@ -245,6 +247,7 @@ public class ChangeSourceFactory {
                                 || auditColumn.getDecimalSize() < baseColumn.getSize()) ) {
                         //type is the same, but size increased
                         workUnit = new DBChangeUnit(DBChangeType.alterColumnSize);
+                        workUnit.setTableName(auditTableName);
                         workUnit.setColumnName(baseColumn.getName());
                         workUnit.setDataType(baseColumn.getType());
                         workUnit.setSize(baseColumn.getSize());
@@ -262,6 +265,7 @@ public class ChangeSourceFactory {
                         } while (auditColumnMap.containsKey(newColumnName));
                         //rename the old version of the audit column
                         workUnit = new DBChangeUnit(DBChangeType.alterColumnName);
+                        workUnit.setTableName(auditTableName);
                         workUnit.setColumnName(auditColumn.getName());
                         workUnit.setNewColumnName(newColumnName);
                         workUnit.setDataType(auditColumn.getType());
@@ -271,6 +275,7 @@ public class ChangeSourceFactory {
                         
                         //now add the new version of the column
                         workUnit = new DBChangeUnit(DBChangeType.addColumn);
+                        workUnit.setTableName(auditTableName);
                         workUnit.setColumnName(baseColumn.getName());
                         workUnit.setDataType(baseColumn.getType());
                         workUnit.setSize(baseColumn.getSize());
@@ -281,6 +286,7 @@ public class ChangeSourceFactory {
                 else {
                     //new column
                     workUnit = new DBChangeUnit(DBChangeType.addColumn);
+                    workUnit.setTableName(auditTableName);
                     workUnit.setColumnName(baseColumn.getName());
                     workUnit.setDataType(baseColumn.getType());
                     workUnit.setSize(baseColumn.getSize());
@@ -327,9 +333,10 @@ public class ChangeSourceFactory {
         //now add the columns that will be included in the trigger
         //and set whether or not they will cause it to fire (default is true)
         for (ColumnDef baseColumnDef : baseTableDef.getColumns()){
-            workUnit = new DBChangeUnit(DBChangeType.addColumn);
+            workUnit = new DBChangeUnit(DBChangeType.addTriggerColumn);
             workUnit.setTableName(baseTableName);
             workUnit.setAuditTableName(auditTableName);
+            workUnit.setColumnName(baseColumnDef.getName());
             if (isColumnExcluded(baseTableDef.getName(), baseColumnDef.getName())){
                 workUnit.setFiresTrigger(Boolean.FALSE);
             }
