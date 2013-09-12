@@ -64,6 +64,10 @@ public class ConfigAttribute {
         return value;
     }
 
+    public void setValue(String value) {
+        this.value = (value == null ? "" : value);
+    }
+
     public Boolean getBooleanValue(){
         if (value.equalsIgnoreCase("false")){
             return Boolean.FALSE;
@@ -73,8 +77,15 @@ public class ConfigAttribute {
         }
     }
     
-    public void setValue(String value) {
-        this.value = (value == null ? "" : value);
+    public void setBooleanValue(Boolean value){
+        if (value.equals(Boolean.FALSE)){
+            this.value = "false";
+        }
+        else {
+            this.value = "true";
+        }
     }
+    
+
     
 }
