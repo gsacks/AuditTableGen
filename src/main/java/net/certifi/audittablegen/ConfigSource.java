@@ -20,22 +20,27 @@ public class ConfigSource {
     
     Map<String, TableConfig> existingTables;
     Map<String, TableConfig> existingAuditTables;
-    String tablePrefix = "zz_";
-    String tablePostfix = "";
-    String columnPrefix = "";
-    String columnPostfix = "";
-    List<ConfigAttribute> allAttributes; //all attributes
+
+    List<TableDef> allTables; //list of all tables in the tartget db/schema
     List<ConfigAttribute> excludes; //only exclude attributes
     List<ConfigAttribute> includes; //only include attributes
+    List<ConfigAttribute> dbAttribs; //prefixes & postfixes
+    List<ConfigAttribute> triggerAttribs; //triggers
+    List<ConfigAttribute> otherAttributes; //these are of unknown type
     //IdentifierMetaData idMetaData;
     
     ConfigSource(){
         //this.idMetaData = idMetaData;
         existingTables = new CaseInsensitiveMap();
         existingAuditTables = new CaseInsensitiveMap();
-        allAttributes = new ArrayList<>();
+        dbAttribs = new ArrayList<>();
+        triggerAttribs = new ArrayList<>();
         excludes = new ArrayList<>();
         includes = new ArrayList<>();
+        otherAttributes = new ArrayList<>();
+                
+        allTables = new ArrayList<>();
+
     }
     
     void addAtrributes(List<ConfigAttribute> attributes){
@@ -48,107 +53,145 @@ public class ConfigSource {
     }
 
     void addAtribute(ConfigAttribute attrib) {
-
-        //TODO handle regexp or wildcards resolve all excludes 1st
-        //then resolve includes, all in one step before processing
-        //tables
-        
-        allAttributes.add(attrib);
         
         switch (attrib.getType()) {
             case exclude:
                 excludes.add(attrib);
-                if (attrib.getTable().isEmpty()){
-                    //do not currently handle exclude of column
-                    //names only
-                }
-                else {
-                    if (attrib.getColumn().isEmpty()){
-                        //exclude table
-                        getTableConfig(attrib.getTable()).setExcludeTable(Boolean.FALSE);
-                    }
-                    else {
-                        //exclude specific column
-                        getTableConfig(attrib.getTable()).addExcludedColumn(attrib.getColumn());
-                    }
-                }
                 break;
             case include:
                 includes.add(attrib);
-                if (attrib.getTable().isEmpty()){
-                    //do not currently handle include of column
-                    //names only
-                }
-                else {
-                    if (attrib.getColumn().isEmpty()){
-                        //include table (this is default)
-                        getTableConfig(attrib.getTable()).setExcludeTable(Boolean.FALSE);
-                    }
-                    else {
-                        //include specific column (this is default)
-                        getTableConfig(attrib.getTable()).addIncludedColumn(attrib.getColumn());
-                    }
-                }
                 break;
-            case tableprefix:
-                setTablePrefix(attrib.getValue());
-                break;
+            case tableprefix: 
             case tablepostfix:
-                setTablePostfix(attrib.getValue());
-                break;
             case columnprefix:
-                setColumnPrefix(attrib.getValue());
-                break;
             case columnpostfix:
-                setColumnPostfix(attrib.getValue());
+                dbAttribs.add(attrib);
                 break;
             case auditinsert:
-                getTableConfig(attrib.getTable()).setHasInsertTrigger(attrib.getBooleanValue());
-                break;
             case auditupdate:
-                getTableConfig(attrib.getTable()).setHasUpdateTrigger(attrib.getBooleanValue());
-                break;
             case auditdelete:
-                getTableConfig(attrib.getTable()).setHasDeleteTrigger(attrib.getBooleanValue());
-                break;
+                triggerAttribs.add(attrib);
             case unknown:
+            default:
+                otherAttributes.add(attrib);
                 break;
         }
     }
     
-    void applyAttributes(){
-        
-        //apply excludes
-        //apply includes
-        //apply everything else
-    }
+   
+    
+    /**
+     * Applies all configuration attributes to the set of tables.  Excludes are
+     * processed first, then includes (which may override excludes) and then all
+     * other attributes.  If an attribute references a table that does not exist
+     * in the table list, then it will not be applied.  Tables should be loaded
+     * before applyAttributes is called.
+     */
+//    void applyAttributes(){
+//        
+//        for ( ConfigAttribute attrib : excludes){
+//            applyAttribute(attrib);
+//        }
+//        
+//        for ( ConfigAttribute attrib : includes){
+//            applyAttribute(attrib);
+//        }
+//        
+//        for ( ConfigAttribute attrib : otherAttributes){
+//            applyAttribute(attrib);
+//        }
+//        
+//    }
     
     void addTable(TableDef tableDef){
         
-        
+        allTables.add(tableDef);
     }
     
     void addTables(List<TableDef> tablesDefs){
         
-        for ( TableDef tableDef : tablesDefs){
-            addTable(tableDef);
-        }
+        allTables.addAll(tablesDefs);
         
     }
     
-    void addExistingAuditTable (String auditTableName){
-        
-        if (!existingAuditTables.containsKey(auditTableName)){
-            TableConfig atc = new TableConfig(auditTableName);
-            existingAuditTables.put (auditTableName, atc);
-        }
-
-    }
+}
     
-    Boolean hasExistingAuditTable (String auditTableName){
-        
-        return existingAuditTables.containsKey(auditTableName);
-    }
+    /**
+     * Get a List of tables from the Tables map whose keys match the
+     * supplied pattern.  The objects in the List are the same objects
+     * in the map, and changes to the List are reflected in the Map.  Add
+     * or remove from the List has no effect on the Map.
+     * 
+     * ONLY EXACT MATCHES ARE CURRENTLY SUPPORTED, EXCEPT EMPTY STRING OR '*'
+     * MATCHES ALL TABLES.
+     * 
+     * @param tablePattern table name pattern to match on
+     * @return List of TableConfig objects matching the pattern 
+     */
+//    List getTableMatches(String tablePattern){
+//        
+//        List<TableConfig> matched = new ArrayList<>();
+//        
+//        Iterator<Entry<String, TableConfig>> iter  = existingAuditTables.entrySet().iterator();
+//        while (iter.hasNext()) {
+//            TableConfig tc = iter.next().getValue();
+//            
+//            if (tablePattern.isEmpty()
+//                    || tablePattern.equals("*")
+//                    || tablePattern.equalsIgnoreCase(tc.tableName)){
+//                matched.add(tc);
+//            }
+//        }
+//        
+//        return matched;
+//        
+//    }
+    
+    /**
+     * Get a List of columns from the Tables map whose keys match the
+     * supplied pattern.  The objects in the List are the same objects
+     * in the map, and changes to the List are reflected in the Map.  Add
+     * or remove from the List has no effect on the Map.
+     * 
+     * ONLY EXACT MATCHES ARE CURRENTLY SUPPORTED, EXCEPT EMPTY STRING OR '*'
+     * MATCHES ALL TABLES.
+     * 
+     * @param tablePattern table name pattern to match on
+     * @return List of TableConfig objects matching the pattern 
+     */
+    
+//    List getColumnMatches(Map<String, Str> c, String columnPattern){
+//        
+//        List<TableConfig> matched = new ArrayList<>();
+//        
+//        Iterator<Entry<String, TableConfig>> iter  = existingAuditTables.entrySet().iterator();
+//        while (iter.hasNext()) {
+//            TableConfig tc = iter.next().getValue();
+//            
+//            if (tablePattern.isEmpty()
+//                    || tablePattern.equals("*")
+//                    || tablePattern.equalsIgnoreCase(tc.tableName)){
+//                matched.add(tc);
+//            }
+//        }
+//        
+//        return matched;
+//        
+//    }
+    
+//    void addExistingAuditTable (String auditTableName){
+//        
+//        if (!existingAuditTables.containsKey(auditTableName)){
+//            TableConfig atc = new TableConfig(auditTableName);
+//            existingAuditTables.put (auditTableName, atc);
+//        }
+//
+//    }
+    
+//    Boolean hasExistingAuditTable (String auditTableName){
+//        
+//        return existingAuditTables.containsKey(auditTableName);
+//    }
     
     /**
      * Add table to the map of database tables.  Note that the table
@@ -158,22 +201,23 @@ public class ConfigSource {
      * 
      * @param tableName 
      */
-    void addTableConfig (String tableName){
-        
-        if(!existingTables.containsKey(tableName)){
-            TableConfig tc = new TableConfig(tableName);
-            existingTables.put(tableName, tc);
-        }
-    }
+//    void addTableConfig (String tableName){
+//        
+//        if(!existingTables.containsKey(tableName)){
+//            TableConfig tc = new TableConfig(tableName);
+//            existingTables.put(tableName, tc);
+//        }
+//    }
+    
     
     /**
      * A proxy for addTableConfig
      * 
      * @param tableName 
      */
-    void ensureTableConfig (String tableName){
-        addTableConfig(tableName);
-    }
+//    void ensureTableConfig (String tableName){
+//        addTableConfig(tableName);
+//    }
     
     /**
      * Finds the table in the existing table map and sets the exclude
@@ -182,12 +226,12 @@ public class ConfigSource {
      * @param tableName The name of the table to exclude from having an audit
      * table created for it.
      */
-    void addExcludedTable (String tableName){
-         TableConfig tc;
-         ensureTableConfig(tableName);
-         tc = this.getTableConfig(tableName);
-         tc.setExcludeTable(Boolean.TRUE);
-    }
+//    void addExcludedTable (String tableName){
+//         TableConfig tc;
+//         ensureTableConfig(tableName);
+//         tc = this.getTableConfig(tableName);
+//         tc.setExcludeTable(Boolean.TRUE);
+//    }
     /**
      * Finds the table in the existing table map and adds the column
      * to the list of columns to be excluded from triggering an update
@@ -197,15 +241,15 @@ public class ConfigSource {
      * @param tableName The name of the table containing the column
      * @param columnName The column name.
      */
-    void addExcludedColumn (String tableName, String columnName){
-    
-        TableConfig tc;
-        
-        ensureTableConfig(tableName);
-        tc = this.getTableConfig(tableName);
-        tc.addExcludedColumn(columnName);
-        
-    }
+//    void addExcludedColumn (String tableName, String columnName){
+//    
+//        TableConfig tc;
+//        
+//        ensureTableConfig(tableName);
+//        tc = this.getTableConfig(tableName);
+//        tc.addExcludedColumn(columnName);
+//        
+//    }
     
     /**
      * Finds the table in the existing table map and adds the column
@@ -219,59 +263,59 @@ public class ConfigSource {
      * @param tableName The name of the table containing the column
      * @param columnName The column name.
      */
-    void addIncludedColumn (String tableName, String columnName){
-    
-        TableConfig tc;
+//    void addIncludedColumn (String tableName, String columnName){
+//    
+//        TableConfig tc;
+//
+//        ensureTableConfig(tableName);
+//        tc = this.getTableConfig(tableName);
+//        tc.addIncludedColumn(columnName);
+//        
+//    }
 
-        ensureTableConfig(tableName);
-        tc = this.getTableConfig(tableName);
-        tc.addIncludedColumn(columnName);
-        
-    }
-
-    TableConfig getTableConfig (String tableName){
-        
-        return existingTables.get(tableName);
-    }
-    
-    String getTablePostfix() {
-        return tablePostfix;
-    }
-
-    void setTablePostfix(String tablePostfix) {
-        this.tablePostfix = tablePostfix;
-    }
-
-    String getTablePrefix() {
-        return tablePrefix;
-    }
-
-    void setTablePrefix(String tablePrefix) {
-        this.tablePrefix = tablePrefix;
-    }
-
-    String getColumnPostfix() {
-        return columnPostfix;
-    }
-
-    //not supported - can wreak havok with table ids
-    void setColumnPostfix(String columnPostfix) {
-        this.columnPostfix = "";
-        //this.columnPostfix = columnPostfix;
-    }
-
-    String getColumnPrefix() {
-        return columnPrefix;
-    }
-
-    //not supported - can wreak havoc with table ids
-    void setColumnPrefix(String columnPrefix) {
-        this.columnPrefix = "";
-        //this.columnPrefix = columnPrefix;
-    }
-
-    TableConfig getExistingAuditTable(String key) {
-        return existingAuditTables.get(key);
-    }
-    
-}
+//    TableConfig getTableConfig (String tableName){
+//        
+//        return existingTables.get(tableName);
+//    }
+//    
+//    String getTablePostfix() {
+//        return tablePostfix;
+//    }
+//
+//    void setTablePostfix(String tablePostfix) {
+//        this.tablePostfix = tablePostfix;
+//    }
+//
+//    String getTablePrefix() {
+//        return tablePrefix;
+//    }
+//
+//    void setTablePrefix(String tablePrefix) {
+//        this.tablePrefix = tablePrefix;
+//    }
+//
+//    String getColumnPostfix() {
+//        return columnPostfix;
+//    }
+//
+//    //not supported - can wreak havok with table ids
+//    void setColumnPostfix(String columnPostfix) {
+//        this.columnPostfix = "";
+//        //this.columnPostfix = columnPostfix;
+//    }
+//
+//    String getColumnPrefix() {
+//        return columnPrefix;
+//    }
+//
+//    //not supported - can wreak havoc with table ids
+//    void setColumnPrefix(String columnPrefix) {
+//        this.columnPrefix = "";
+//        //this.columnPrefix = columnPrefix;
+//    }
+//
+//    TableConfig getExistingAuditTable(String key) {
+//        return existingAuditTables.get(key);
+//    }
+//    
+//}

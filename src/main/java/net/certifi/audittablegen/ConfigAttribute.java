@@ -15,10 +15,10 @@ public class ConfigAttribute {
     
     private static final Logger logger = LoggerFactory.getLogger(ConfigAttribute.class);
     ConfigAttributeTypes type = ConfigAttributeTypes.unknown;
-    String attribute = null;
-    String tableName = null;
-    String columnName = null;
-    String value = null;
+    String attribute = "";
+    String tableName = "";
+    String columnName = "";
+    String value = "";
 
     public ConfigAttributeTypes getType() {
         return type;
@@ -33,31 +33,31 @@ public class ConfigAttribute {
     }
 
     public void setAttribute(String attribute) {
-        this.attribute = attribute;
+        this.attribute = (attribute == null ? "" : attribute);
         
         try {
-            type = ConfigAttributeTypes.valueOf(attribute.toLowerCase());
+            type = ConfigAttributeTypes.valueOf(this.attribute.toLowerCase());
         } catch (EnumConstantNotPresentException e) {
-            logger.error("Unknown attribute type: %s", attribute.toLowerCase());
+            logger.error("Unknown attribute type: %s", this.attribute.toLowerCase());
             type = ConfigAttributeTypes.unknown;
         }
         
     }
     
-    public String getColumn() {
+    public String getColumnName() {
         return columnName;
     }
 
-    public void setColumn(String column) {
-        this.columnName = column;
+    public void setColumnName(String columnName) {
+        this.columnName = (columnName == null ? "" : columnName);
     }
 
-    public String getTable() {
+    public String getTableName() {
         return tableName;
     }
 
-    public void setTable(String table) {
-        this.tableName = table;
+    public void setTableName(String tableName) {
+        this.tableName = (tableName == null ? "" : tableName);
     }
 
     public String getValue() {
@@ -74,7 +74,7 @@ public class ConfigAttribute {
     }
     
     public void setValue(String value) {
-        this.value = value;
+        this.value = (value == null ? "" : value);
     }
     
 }

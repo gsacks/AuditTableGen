@@ -185,8 +185,8 @@ class GenericDMR implements DataSourceDMR {
                 //load attributes into configSource
                 ConfigAttribute attrib = new ConfigAttribute();
                 attrib.setAttribute(rs.getString("attribute"));
-                attrib.setTable(rs.getString("table"));
-                attrib.setColumn(rs.getString("column"));
+                attrib.setTableName(rs.getString("table"));
+                attrib.setColumnName(rs.getString("column"));
                 attrib.setValue(rs.getString("value"));
                 
                 attributes.add(attrib);

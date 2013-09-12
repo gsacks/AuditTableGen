@@ -12,12 +12,20 @@ public class DBChangeUnit {
 
     DBChangeType changeType = DBChangeType.notSet;
     String tableName = "";
+    String auditTableName = "";
     String columnName = "";
+    String newColumnName = "";
     Boolean firesTrigger = Boolean.TRUE;
     String dataType = "";
     int size = 0;
     int decimalSize = 0;
+    Boolean identity = Boolean.FALSE;
 
+    public DBChangeUnit( DBChangeType changeType) {
+        this.changeType = changeType;
+    }
+
+    
     public DBChangeType getChangeType() {
         return changeType;
     }
@@ -32,6 +40,14 @@ public class DBChangeUnit {
 
     public void setColumnName(String columnName) {
         this.columnName = columnName;
+    }
+
+    public String getNewColumnName() {
+        return newColumnName;
+    }
+
+    public void setNewColumnName(String newColumnName) {
+        this.newColumnName = newColumnName;
     }
 
     public String getDataType() {
@@ -72,6 +88,22 @@ public class DBChangeUnit {
 
     public void setTableName(String tableName) {
         this.tableName = tableName;
+    }
+
+    public String getAuditTableName() {
+        return auditTableName;
+    }
+
+    public void setAuditTableName(String auditTableName) {
+        this.auditTableName = auditTableName;
+    }
+
+    public Boolean getIdentity() {
+        return identity;
+    }
+
+    public void setIdentity(Boolean identity) {
+        this.identity = identity;
     }
     
     

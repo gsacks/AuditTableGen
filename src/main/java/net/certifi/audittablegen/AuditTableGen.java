@@ -146,12 +146,15 @@ public class AuditTableGen {
 
             configSource.addAtrributes(dmr.getConfigAttributes());
             configSource.addTables(dmr.getTables());
-            configSource.applyAttributes();
             
-            dmr.readDBChangeList(configSource.getDBChangeList());
+            ChangeSourceFactory factory = new ChangeSourceFactory(configSource);
+            
+            dmr.readDBChangeList(factory.getDBChangeList());
             dmr.executeChanges();
             
         }
+        
+        return true;
         
     }
     
