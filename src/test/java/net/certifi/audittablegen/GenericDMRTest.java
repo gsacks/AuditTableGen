@@ -5,7 +5,6 @@
 package net.certifi.audittablegen;
 
 import java.sql.*;
-import java.util.Map.Entry;
 import java.util.*;
 import javax.sql.DataSource;
 import static org.junit.Assert.*;
@@ -462,18 +461,6 @@ public class GenericDMRTest {
     }
 
     /**
-     * Test of createAuditConfigTable2 method, of class GenericDMR.
-     */
-    @Test
-    public void testCreateAuditConfigTable2() {
-        System.out.println("createAuditConfigTable2");
-        GenericDMR instance = null;
-        instance.createAuditConfigTable2();
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
-    }
-
-    /**
      * Test of getTables method, of class GenericDMR.
      */
     @Test
@@ -508,7 +495,7 @@ public class GenericDMRTest {
     public void testGetColumns() throws SQLException {
         System.out.println("getColumns");
 
-         String tableName = "myTable";
+        String tableName = "myTable";
         String verifiedSchema = "public";
         ResultSet rs = mock(ResultSet.class);
         ResultSetMetaData rsmd = mock (ResultSetMetaData.class);
@@ -545,11 +532,29 @@ public class GenericDMRTest {
     @Test
     public void testReadDBChangeList() {
         System.out.println("readDBChangeList");
-        List<DBChangeUnit> units = null;
-        GenericDMR instance = null;
-        instance.readDBChangeList(units);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        
+        //set-up using real objects
+        ConfigSource realConfigSource = new ConfigSource();
+        TableDef td = new TableDef();
+        td.name = "Table1";
+        ColumnDef cd = new ColumnDef();
+        cd.name = "Table1Id";
+        cd.type = "integer";
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "Data";
+        cd.type = "varchar";
+        cd.size = 255;
+        td.addColumn(cd);
+        realConfigSource.addTable(td);
+        realConfigSource.dbAttribs = new ArrayList<>();
+        ChangeSourceFactory factory = new ChangeSourceFactory(realConfigSource);
+        List<DBChangeUnit> units = factory.getDBChangeList();
+        dmr.readDBChangeList(units);
+        int ops = dmr.operations.size();
+
+        assertEquals (2, ops);
+
     }
 
     /**
@@ -583,8 +588,152 @@ public class GenericDMRTest {
     @Test
     public void testPurgeDBChanges() {
         System.out.println("purgeDBChanges");
+        
+        dmr.operations.add(new ArrayList<DBChangeUnit>());
+        dmr.operations.add(new ArrayList<DBChangeUnit>());
+        
+        int before = dmr.operations.size();
+        dmr.purgeDBChanges();
+        int after = dmr.operations.size();
+
+        assertEquals(2, before);
+        assertEquals(0, after);
+        
+    }
+
+    /**
+     * Test of getMaxUserNameLength method, of class GenericDMR.
+     */
+    @Test
+    public void testGetMaxUserNameLength() throws SQLException {
+        System.out.println("getMaxUserNameLength");
+        
+        when (dmd.getMaxUserNameLength()).thenReturn(100);
+        int expResult = 100;
+        int result = dmr.getMaxUserNameLength();
+        assertEquals(expResult, result);
+
+    }
+
+    /**
+     * Test of getCreateTableSQL method, of class GenericDMR.
+     */
+    @Test
+    public void testGetCreateTableSQL() {
+        System.out.println("getCreateTableSQL");
+        
+        //set-up using real objects
+        ConfigSource realConfigSource = new ConfigSource();
+        TableDef td = new TableDef();
+        td.name = "Table1";
+        ColumnDef cd = new ColumnDef();
+        cd.name = "Table1Id";
+        cd.type = "integer";
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "Data";
+        cd.type = "varchar";
+        cd.size = 255;
+        td.addColumn(cd);
+        realConfigSource.addTable(td);
+        realConfigSource.dbAttribs = new ArrayList<>();
+        ChangeSourceFactory factory = new ChangeSourceFactory(realConfigSource);
+        List<DBChangeUnit> units = factory.getDBChangeList();
+        dmr.readDBChangeList(units);
+        
+        
+        List<DBChangeUnit> op = dmr.operations.remove();
+        
+        String result = dmr.getCreateTableSQL(op);
+        System.out.println(result);
+        assertEquals("", result);
+
+    }
+
+    /**
+     * Test of getAlterTableSQL method, of class GenericDMR.
+     */
+    @Test
+    public void testGetAlterTableSQL() {
+        System.out.println("getAlterTableSQL");
+        List<DBChangeUnit> op = null;
         GenericDMR instance = null;
-        instance.purgeDBChanges();
+        String expResult = "";
+        String result = instance.getAlterTableSQL(op);
+        assertEquals(expResult, result);
+        // TODO review the generated test code and remove the default call to fail.
+        fail("The test case is a prototype.");
+    }
+
+    /**
+     * Test of getCreateTriggerSQL method, of class GenericDMR.
+     */
+    @Test
+    public void testGetCreateTriggerSQL() {
+        System.out.println("getCreateTriggerSQL");
+        
+        //set-up using real objects
+        ConfigSource realConfigSource = new ConfigSource();
+        TableDef td = new TableDef();
+        td.name = "Table1";
+        ColumnDef cd = new ColumnDef();
+        cd.name = "Table1Id";
+        cd.type = "integer";
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "Data";
+        cd.type = "varchar";
+        cd.size = 255;
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "DataExclude";
+        cd.type = "varchar";
+        cd.size = 255;
+        td.addColumn(cd);
+        realConfigSource.addTable(td);
+        realConfigSource.dbAttribs = new ArrayList<>();
+        ConfigAttribute attrib = new ConfigAttribute();
+        attrib.setAttribute("exclude");
+        attrib.setColumnName("DataExclude");
+        realConfigSource.addAttribute(attrib);
+        
+        ChangeSourceFactory factory = new ChangeSourceFactory(realConfigSource);
+        List<DBChangeUnit> units = factory.getDBChangeList();
+        dmr.readDBChangeList(units);
+        
+        
+        List<DBChangeUnit> op = dmr.operations.remove();
+        op = dmr.operations.remove();
+        
+        String result = dmr.getCreateTriggerSQL(op);
+        System.out.println(result);
+        assertEquals("", result);
+    }
+
+    /**
+     * Test of getDropTriggerSQL method, of class GenericDMR.
+     */
+    @Test
+    public void testGetDropTriggerSQL() {
+        System.out.println("getDropTriggerSQL");
+        List<DBChangeUnit> op = null;
+        GenericDMR instance = null;
+        String expResult = "";
+        String result = instance.getDropTriggerSQL(op);
+        assertEquals(expResult, result);
+        // TODO review the generated test code and remove the default call to fail.
+        fail("The test case is a prototype.");
+    }
+
+    /**
+     * Test of executeUpdate method, of class GenericDMR.
+     */
+    @Test
+    public void testExecuteUpdate() {
+        System.out.println("executeUpdate");
+        String query = "";
+        GenericDMR instance = null;
+        instance.executeUpdate(query);
         // TODO review the generated test code and remove the default call to fail.
         fail("The test case is a prototype.");
     }

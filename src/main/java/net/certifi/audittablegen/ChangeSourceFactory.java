@@ -434,19 +434,22 @@ public class ChangeSourceFactory {
         //action
         workUnit = new DBChangeUnit(DBChangeType.addTriggerAction);
         workUnit.setColumnName(auditActionColumn);
-        workUnit.setTableName(auditTableName);
+        workUnit.setTableName(baseTableName);
+        workUnit.setAuditTableName(auditTableName);
         tableChangeUnits.add(workUnit);
 
         //user
         workUnit = new DBChangeUnit(DBChangeType.addTriggerUser);
         workUnit.setColumnName(auditUserColumn);
-        workUnit.setTableName(auditTableName);
+        workUnit.setTableName(baseTableName);
+        workUnit.setAuditTableName(auditTableName);
         tableChangeUnits.add(workUnit);
 
         //timestamp
         workUnit = new DBChangeUnit(DBChangeType.addTriggerTimeStamp);
         workUnit.setColumnName(auditTimeStampColumn);
-        workUnit.setTableName(auditTableName);
+        workUnit.setTableName(baseTableName);
+        workUnit.setAuditTableName(auditTableName);
         tableChangeUnits.add(workUnit);
         
         //end trigger changes

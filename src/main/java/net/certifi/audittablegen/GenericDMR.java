@@ -36,6 +36,7 @@ class GenericDMR implements DataSourceDMR {
     String verifiedSchema;
     String unverifiedAuditConfigTable = "auditconfig";
     String verifiedAuditConfigTable;
+    String lastSQL; //adding this for testing
     Queue<List<DBChangeUnit>> operations = new ArrayDeque<>();
     //IdentifierMetaData idMetaData;
    
@@ -139,28 +140,28 @@ class GenericDMR implements DataSourceDMR {
   
     }
     
-    public void createAuditConfigTable2() {
-        
-        StringBuilder builder  = new StringBuilder();
-        
-        builder.append("create table ").append(this.unverifiedAuditConfigTable).append("(").append(System.lineSeparator());
-        builder.append("...the rest of theh create script...this will generate an error");
-        
-        try (Connection conn = dataSource.getConnection()) {
-            String schema = getSchema();
-            if (null != schema) {
-                conn.setSchema(schema);
-            }
-
-            Statement stmt = conn.createStatement();
-            stmt.executeUpdate(builder.toString());
-            
-            stmt.close();
-        } catch (SQLException ex) {
-            logger.error("Error genereating audit configuration tables", ex);
-        }
-        
-    }
+//    public void createAuditConfigTable2() {
+//        
+//        StringBuilder builder  = new StringBuilder();
+//        
+//        builder.append("create table ").append(this.unverifiedAuditConfigTable).append("(").append(System.lineSeparator());
+//        builder.append("...the rest of theh create script...this will generate an error");
+//        
+//        try (Connection conn = dataSource.getConnection()) {
+//            String schema = getSchema();
+//            if (null != schema) {
+//                conn.setSchema(schema);
+//            }
+//
+//            Statement stmt = conn.createStatement();
+//            stmt.executeUpdate(builder.toString());
+//            
+//            stmt.close();
+//        } catch (SQLException ex) {
+//            logger.error("Error genereating audit configuration tables", ex);
+//        }
+//        
+//    }
 
     
     /**
@@ -476,7 +477,7 @@ class GenericDMR implements DataSourceDMR {
     public void executeChanges() {
 
         List<DBChangeUnit> op;
-
+        String query;
 
         while (!operations.isEmpty()) {
             op = operations.poll();
@@ -488,26 +489,35 @@ class GenericDMR implements DataSourceDMR {
             
             switch (op.get(1).changeType) {
                 case createTable:
-                    executeCreateTable(op);
+                    query = getCreateTableSQL(op);
                     break;
                 case alterTable:
-                    executeAlterTable(op);
+                    query = getAlterTableSQL(op);
                     break;
                 case createTriggers:
-                    executeCreateTrigger(op);
+                    query = getCreateTriggerSQL(op);
                     break;
                 case dropTriggers:
-                    executeDropTrigger(op);
+                    query = getDropTriggerSQL(op);
                 default:
                     //should not get here if the list is valid, unless a new changetype
                     //was added that this DMR does not know about.  If which case - fail.
                     logger.error("unimplemented DBChangeUnit {%s}", op.get(1).getChangeType().toString());
                     return;
             }
+            
+            if (query == null){
+                logger.error("Error generating update SQL for changeList", DBChangeUnit.ListToString(op));
+                return;
+            }
+            else {
+                executeUpdate(query);
+            }
+            
         }
     }
 
-    private void executeCreateTable(List<DBChangeUnit> op) {
+    String getCreateTableSQL(List<DBChangeUnit> op) {
         
         StringBuilder builder = new StringBuilder();
         StringBuilder constraints = new StringBuilder();
@@ -529,6 +539,9 @@ class GenericDMR implements DataSourceDMR {
                 case addColumn:
                     if (!firstCol){
                         builder.append(", ");
+                    }
+                    else {
+                        firstCol = false;
                     }
                     if (unit.identity){
                         builder.append(unit.columnName).append(" ").append("serial PRIMARY KEY").append(System.lineSeparator());
@@ -553,33 +566,16 @@ class GenericDMR implements DataSourceDMR {
                 default:
                     //should not get here if the list is valid, unless a new changetype
                     //was added that this DMR does not know about.  If which case - fail.
-                    logger.error("unimplemented DBChangeUnit {%s} for alter table operation", unit.getChangeType().toString());
-                    return;
+                    logger.error("unimplemented DBChangeUnit '{}' for alter table operation", unit.getChangeType().toString());
+                    return null;
             }
         }
         
-        String schema = this.getSchema();
-        
-        try (Connection conn = dataSource.getConnection()) {
-            String defaultSchema = conn.getSchema();
-            if (null != schema) {
-                conn.setSchema(schema);
-            }
-            Statement stmt = conn.createStatement();
-            stmt.executeUpdate(builder.toString());
-            stmt.close();
-
-            //just in case this code is called with a pooled dataSource
-            conn.setSchema(defaultSchema);
-            
-            
-        } catch (SQLException ex) {
-            logger.error("Create audit table failed...", ex);
-        }
+        return builder.toString();
         
     }
 
-    private void executeAlterTable(List<DBChangeUnit> op) {
+    String getAlterTableSQL(List<DBChangeUnit> op) {
         
         StringBuilder builder = new StringBuilder();
         StringBuilder constraints = new StringBuilder();
@@ -633,32 +629,15 @@ class GenericDMR implements DataSourceDMR {
                     //should not get here if the list is valid, unless a new changetype
                     //was added that this DMR does not know about.  If which case - fail.
                     logger.error("unimplemented DBChangeUnit {%s} for drop trigger operation", unit.getChangeType().toString());
-                    return;
+                    return null;
             }
         }
         
-        String schema = this.getSchema();
-        
-        try (Connection conn = dataSource.getConnection()) {
-            String defaultSchema = conn.getSchema();
-            if (null != schema) {
-                conn.setSchema(schema);
-            }
-            Statement stmt = conn.createStatement();
-            stmt.executeUpdate(builder.toString());
-            stmt.close();
-
-            //just in case this code is called with a pooled dataSource
-            conn.setSchema(defaultSchema);
-            
-            
-        } catch (SQLException ex) {
-            logger.error("Alter audit table failed...", ex);
-        }
+        return builder.toString();
 
     }
 
-    private void executeCreateTrigger(List<DBChangeUnit> op) {
+    String getCreateTriggerSQL(List<DBChangeUnit> op) {
         
         StringBuilder builder = new StringBuilder();
         StringBuilder insertDetail = new StringBuilder();
@@ -691,7 +670,7 @@ class GenericDMR implements DataSourceDMR {
                                 tableName, actionColumn == null ? "action" : "",
                                 timeStampColumn == null ? "timeStamp" : "",
                                 userColumn == null ? "user" : "");
-                        return;
+                        return null;
                     }
                     
                     //////////////////////
@@ -703,10 +682,12 @@ class GenericDMR implements DataSourceDMR {
                         for (String col : whenColumns){
                             if (!firstCol){
                                 updateConditional.append("            OR ");
+                             
                             }
-                            updateConditional.append("OLD.").append(unit.getColumnName()).append(" IS DISTINCT FROM NEW.").append(unit.getColumnName()).append(System.lineSeparator());
+                            firstCol = false;
+                            updateConditional.append("OLD.").append(col).append(" IS DISTINCT FROM NEW.").append(col).append(System.lineSeparator());
                         }
-                        updateConditional.append(")) THEN").append(System.lineSeparator());                       
+                        updateConditional.append("            )) THEN").append(System.lineSeparator());                       
                     }
                     else {
                         //no column conditions.  Alwasy insert audit row on update
@@ -729,9 +710,9 @@ class GenericDMR implements DataSourceDMR {
                     
                     //////////////////////
                     //generate the insert column valuues for the trigger(s)
-                    insertDetail.append("        VALUES SELECT 'insert', user, now()");
-                    updateDetail.append("        VALUES SELECT 'update', user, now()");
-                    deleteDetail.append("        VALUES SELECT 'delete', user, now()");
+                    insertDetail.append("        SELECT 'insert', user, now()");
+                    updateDetail.append("        SELECT 'update', user, now()");
+                    deleteDetail.append("        SELECT 'delete', user, now()");
                     for (String col : columns){
                         insertDetail.append(", NEW.").append(col);
                         updateDetail.append(", NEW.").append(col);
@@ -823,31 +804,15 @@ class GenericDMR implements DataSourceDMR {
                     //should not get here if the list is valid, unless a new changetype
                     //was added that this DMR does not know about.  If which case - fail.
                     logger.error("unimplemented DBChangeUnit {%s} for create table operation", unit.getChangeType().toString());
-                    return;
+                    return null;
             }
         }
         
-        String schema = this.getSchema();
+        return builder.toString();
         
-        try (Connection conn = dataSource.getConnection()) {
-            String defaultSchema = conn.getSchema();
-            if (null != schema) {
-                conn.setSchema(schema);
-            }
-            Statement stmt = conn.createStatement();
-            stmt.executeUpdate(builder.toString());
-            stmt.close();
-
-            //just in case this code is called with a pooled dataSource
-            conn.setSchema(defaultSchema);
-            
-            
-        } catch (SQLException ex) {
-            logger.error("Create triggers failed...", ex);
-        }
     }
 
-    private void executeDropTrigger(List<DBChangeUnit> op) {
+    String getDropTriggerSQL(List<DBChangeUnit> op) {
         
         StringBuilder builder = new StringBuilder();
         String triggerName;
@@ -868,10 +833,16 @@ class GenericDMR implements DataSourceDMR {
                     //should not get here if the list is valid, unless a new changetype
                     //was added that this DMR does not know about.  If which case - fail.
                     logger.error("unimplemented DBChangeUnit {%s} for create table operation", unit.getChangeType().toString());
-                    return;
+                    return null;
             }
         }
         
+        return builder.toString();
+        
+    }
+        
+    public void executeUpdate (String query){
+
         String schema = this.getSchema();
         
         try (Connection conn = dataSource.getConnection()) {
@@ -880,7 +851,7 @@ class GenericDMR implements DataSourceDMR {
                 conn.setSchema(schema);
             }
             Statement stmt = conn.createStatement();
-            stmt.executeUpdate(builder.toString());
+            stmt.executeUpdate(query);
             stmt.close();
 
             //just in case this code is called with a pooled dataSource
@@ -888,10 +859,9 @@ class GenericDMR implements DataSourceDMR {
             
             
         } catch (SQLException ex) {
-            logger.error("Drop trigger failed...", ex);
+            logger.error("Update failed...", ex);
         }
     }
-        
 
     @Override
     public void executeDBChangeList(List<DBChangeUnit> units) {
