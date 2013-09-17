@@ -83,6 +83,12 @@ public interface DataSourceDMR {
     List getColumns (String tableName);
     
     /**
+     * Get the max user name length from MetaData
+     * @return 
+     */
+    int getMaxUserNameLength();
+    
+    /**
      * Read an ordered list of db change commands into a buffer
      * 
      * @param units 

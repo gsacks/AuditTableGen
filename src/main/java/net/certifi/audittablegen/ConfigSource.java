@@ -28,6 +28,7 @@ public class ConfigSource {
     List<ConfigAttribute> triggerAttribs; //triggers
     List<ConfigAttribute> otherAttributes; //these are of unknown type
     //IdentifierMetaData idMetaData;
+    int maxUserNameLength;
     
     ConfigSource(){
         //this.idMetaData = idMetaData;
@@ -78,31 +79,6 @@ public class ConfigSource {
         }
     }
     
-   
-    
-    /**
-     * Applies all configuration attributes to the set of tables.  Excludes are
-     * processed first, then includes (which may override excludes) and then all
-     * other attributes.  If an attribute references a table that does not exist
-     * in the table list, then it will not be applied.  Tables should be loaded
-     * before applyAttributes is called.
-     */
-//    void applyAttributes(){
-//        
-//        for ( ConfigAttribute attrib : excludes){
-//            applyAttribute(attrib);
-//        }
-//        
-//        for ( ConfigAttribute attrib : includes){
-//            applyAttribute(attrib);
-//        }
-//        
-//        for ( ConfigAttribute attrib : otherAttributes){
-//            applyAttribute(attrib);
-//        }
-//        
-//    }
-    
     void addTable(TableDef tableDef){
         
         allTables.add(tableDef);
@@ -113,6 +89,15 @@ public class ConfigSource {
         allTables.addAll(tablesDefs);
         
     }
+
+    public int getMaxUserNameLength() {
+        return maxUserNameLength;
+    }
+
+    public void setMaxUserNameLength(int maxUserNameLength) {
+        this.maxUserNameLength = maxUserNameLength;
+    }
+    
     
 }
     

@@ -36,6 +36,7 @@ class GenericDMR implements DataSourceDMR {
     String verifiedSchema;
     String unverifiedAuditConfigTable = "auditconfig";
     String verifiedAuditConfigTable;
+    Queue<List<DBChangeUnit>> operations = new ArrayDeque<>();
     //IdentifierMetaData idMetaData;
    
     
@@ -175,9 +176,15 @@ class GenericDMR implements DataSourceDMR {
         builder.append("select attribute, table, column, value from ").append(verifiedAuditConfigTable);
                 
         List<ConfigAttribute> attributes = new ArrayList();
+        
         try {
-            
+            String schema = this.getSchema();    
             Connection conn = dataSource.getConnection();
+            String defaultSchema = conn.getSchema();
+
+            if ( schema != null){
+                conn.setSchema(schema);
+            }
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(builder.toString());
             
@@ -192,6 +199,8 @@ class GenericDMR implements DataSourceDMR {
                 attributes.add(attrib);
                 
             }     
+            
+            conn.setSchema(defaultSchema);
             
             rs.close();
             stmt.close();
@@ -400,150 +409,515 @@ class GenericDMR implements DataSourceDMR {
 
     @Override
     public void readDBChangeList(List<DBChangeUnit> units) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        
+        //The change list should be valid, and any code in this method
+        //which is checking errors should not be required.  It is here
+        //for early development sake, but the list really should be validated
+        //before it is submitted here.
+        
+        List<DBChangeUnit> workList = null;
+        Boolean beginTag = false;
+        DBChangeType workListType = DBChangeType.notSet;
+        
+        if (!DBChangeUnit.validateUnitList(units)){
+            logger.error("Invalid DBChangeUnitList submitted.  Not processing");
+            return;
+        }
+        
+        //pull apart each <begin-stuff-end> and submit into queue.
+        for ( DBChangeUnit unit : units) {
+            switch (unit.getChangeType()){
+                case begin:
+                    //start 'work unit list'
+                    beginTag = true;
+                    workList = new ArrayList<>();
+                    workList.add(unit);
+                    break;
+                case end:
+                    beginTag = false;
+                    workList.add(unit);
+                    //add to work queue
+                    operations.add(workList);
+                    break;
+                case createTable:
+                case alterTable:
+                case createTriggers:
+                case dropTriggers:
+                    workListType = unit.getChangeType();
+                    workList.add(unit);
+                    break;
+                case addColumn:                    
+                case alterColumnName:
+                case alterColumnSize:
+                case alterColumnType:                    
+                case addTriggerColumn:
+                case fireOnInsert:
+                case fireOnUpdate:
+                case fireOnDelete:
+                case addTriggerAction:
+                case addTriggerTimeStamp:
+                case addTriggerUser:
+                    workList.add(unit);
+                    break;
+                case notSet:
+                default:
+                    //should not get here if the list is valid, unless a new changetype
+                    //was added that this DMR does not know about.  If which case - fail.
+                    logger.error ("unimplemented DBChangeUnit {%s}", unit.getChangeType().toString());
+                    return;
+                    
+            }
+            
+        }
+
     }
 
     @Override
     public void executeChanges() {
-        throw new UnsupportedOperationException("Not supported yet.");
+
+        List<DBChangeUnit> op;
+
+
+        while (!operations.isEmpty()) {
+            op = operations.poll();
+
+            //validate it one more time, totally not necessary :)
+            if (!DBChangeUnit.validateUnitList(op)) {
+                logger.error("Invalid DBChangeUnitList submitted.  Not processing");
+            }
+            
+            switch (op.get(1).changeType) {
+                case createTable:
+                    executeCreateTable(op);
+                    break;
+                case alterTable:
+                    executeAlterTable(op);
+                    break;
+                case createTriggers:
+                    executeCreateTrigger(op);
+                    break;
+                case dropTriggers:
+                    executeDropTrigger(op);
+                default:
+                    //should not get here if the list is valid, unless a new changetype
+                    //was added that this DMR does not know about.  If which case - fail.
+                    logger.error("unimplemented DBChangeUnit {%s}", op.get(1).getChangeType().toString());
+                    return;
+            }
+        }
     }
+
+    private void executeCreateTable(List<DBChangeUnit> op) {
+        
+        StringBuilder builder = new StringBuilder();
+        StringBuilder constraints = new StringBuilder();
+        boolean firstCol = true;
+
+        for (DBChangeUnit unit : op) {
+            switch (unit.changeType) {
+                case begin:
+                    //nothinig
+                    break;
+                case end:
+                    builder.append(constraints);
+                    builder.append(")").append(System.lineSeparator());
+                    //execute SQL here...
+                    break;
+                case createTable:
+                    builder.append("CREATE TABLE ").append(unit.tableName).append(" (").append(System.lineSeparator());
+                    break;
+                case addColumn:
+                    if (!firstCol){
+                        builder.append(", ");
+                    }
+                    if (unit.identity){
+                        builder.append(unit.columnName).append(" ").append("serial PRIMARY KEY").append(System.lineSeparator());
+                    }
+                    else {
+                        builder.append(unit.columnName).append(" ").append(unit.dataType);
+                        if (unit.size > 0){
+                            builder.append(" (").append(unit.size);
+                        
+                            if (unit.decimalSize > 0){
+                                builder.append(",").append(unit.decimalSize);
+                            }
+                            builder.append(") ");
+                        }
+                        if (!unit.foreignTable.isEmpty()){
+                            builder.append("REFERENCES ").append(unit.foreignTable).append(" (").append(unit.columnName).append(")");
+                            //constraints.append("CONSTRAINT ").append(unit.columnName).append(" REFERENCES ").append(unit.foreignTable);
+                        }
+                        builder.append(System.lineSeparator());
+                    }
+                    break;
+                default:
+                    //should not get here if the list is valid, unless a new changetype
+                    //was added that this DMR does not know about.  If which case - fail.
+                    logger.error("unimplemented DBChangeUnit {%s} for alter table operation", unit.getChangeType().toString());
+                    return;
+            }
+        }
+        
+        String schema = this.getSchema();
+        
+        try (Connection conn = dataSource.getConnection()) {
+            String defaultSchema = conn.getSchema();
+            if (null != schema) {
+                conn.setSchema(schema);
+            }
+            Statement stmt = conn.createStatement();
+            stmt.executeUpdate(builder.toString());
+            stmt.close();
+
+            //just in case this code is called with a pooled dataSource
+            conn.setSchema(defaultSchema);
+            
+            
+        } catch (SQLException ex) {
+            logger.error("Create audit table failed...", ex);
+        }
+        
+    }
+
+    private void executeAlterTable(List<DBChangeUnit> op) {
+        
+        StringBuilder builder = new StringBuilder();
+        StringBuilder constraints = new StringBuilder();
+        boolean firstCol = true;
+
+        for (DBChangeUnit unit : op) {
+            switch (unit.changeType) {
+                case begin:
+                    //nothinig
+                    break;
+                case end:
+                    builder.append(constraints);
+                    //builder.append(")").append(System.lineSeparator());
+                    //execute SQL here...
+                    break;
+                case alterTable:
+                    builder.append("ALTER TABLE ").append(unit.tableName).append(System.lineSeparator());
+                    break;
+                case addColumn:
+                    if (!firstCol){
+                        builder.append(", ");
+                    }
+                    builder.append("ADD COLUMN ").append(unit.columnName).append(" ").append(unit.dataType);
+                    if (unit.size > 0) {
+                        builder.append(" (").append(unit.size);
+
+                        if (unit.decimalSize > 0) {
+                            builder.append(",").append(unit.decimalSize);
+                        }
+                        builder.append(") ");
+                    }
+                    builder.append(System.lineSeparator());
+                case alterColumnSize:
+                case alterColumnType:
+                    if (!firstCol){
+                        builder.append(", ");
+                    }
+                    builder.append("ALTER COLUMN ").append(unit.columnName).append(" ").append(unit.dataType);
+                    if (unit.size > 0) {
+                        builder.append(" (").append(unit.size);
+
+                        if (unit.decimalSize > 0) {
+                            builder.append(",").append(unit.decimalSize);
+                        }
+                        builder.append(") ");
+                    }
+                    builder.append(System.lineSeparator());
+                    
+                    break;
+                default:
+                    //should not get here if the list is valid, unless a new changetype
+                    //was added that this DMR does not know about.  If which case - fail.
+                    logger.error("unimplemented DBChangeUnit {%s} for drop trigger operation", unit.getChangeType().toString());
+                    return;
+            }
+        }
+        
+        String schema = this.getSchema();
+        
+        try (Connection conn = dataSource.getConnection()) {
+            String defaultSchema = conn.getSchema();
+            if (null != schema) {
+                conn.setSchema(schema);
+            }
+            Statement stmt = conn.createStatement();
+            stmt.executeUpdate(builder.toString());
+            stmt.close();
+
+            //just in case this code is called with a pooled dataSource
+            conn.setSchema(defaultSchema);
+            
+            
+        } catch (SQLException ex) {
+            logger.error("Alter audit table failed...", ex);
+        }
+
+    }
+
+    private void executeCreateTrigger(List<DBChangeUnit> op) {
+        
+        StringBuilder builder = new StringBuilder();
+        StringBuilder insertDetail = new StringBuilder();
+        StringBuilder deleteDetail = new StringBuilder();
+        StringBuilder updateDetail = new StringBuilder();
+        StringBuilder updateConditional = new StringBuilder();
+        String functionName = null;
+        String triggerName = null;
+        String triggerReference = null;
+        String tableName = null;
+        String auditTableName = null;
+        String actionColumn = null;
+        String userColumn = null;
+        String timeStampColumn = null;
+        boolean firstTrig = true;
+        boolean onDelete = true;
+        boolean onInsert = true;
+        boolean onUpdate = true;
+        List<String> columns = new ArrayList<>();
+        List<String> whenColumns = new ArrayList<>();
+
+        for (DBChangeUnit unit : op) {
+            switch (unit.changeType) {
+                case begin:
+                    //nothinig
+                    break;
+                case end:
+                    if (actionColumn == null || timeStampColumn == null || userColumn == null){
+                        logger.error("Trigger info for table %s missing audit columns for: %s %s %s",
+                                tableName, actionColumn == null ? "action" : "",
+                                timeStampColumn == null ? "timeStamp" : "",
+                                userColumn == null ? "user" : "");
+                        return;
+                    }
+                    
+                    //////////////////////
+                    //generate the when clause for the update trigger
+                    if (columns.size() > whenColumns.size() ){
+                        //some columns excluded from update
+                        updateConditional.append("AND (");
+                        boolean firstCol = true;
+                        for (String col : whenColumns){
+                            if (!firstCol){
+                                updateConditional.append("            OR ");
+                            }
+                            updateConditional.append("OLD.").append(unit.getColumnName()).append(" IS DISTINCT FROM NEW.").append(unit.getColumnName()).append(System.lineSeparator());
+                        }
+                        updateConditional.append(")) THEN").append(System.lineSeparator());                       
+                    }
+                    else {
+                        //no column conditions.  Alwasy insert audit row on update
+                        updateConditional.append(") THEN").append(System.lineSeparator());
+                    }
+                    
+                    //////////////////////                     
+                    //generate the detail insert column list for the trigger(s)
+                    insertDetail.append(String.format("        INSERT INTO %s (%s, %s, %s", auditTableName, actionColumn, userColumn, timeStampColumn));
+                    updateDetail.append(String.format("        INSERT INTO %s (%s, %s, %s", auditTableName, actionColumn, userColumn, timeStampColumn));
+                    deleteDetail.append(String.format("        INSERT INTO %s (%s, %s, %s", auditTableName, actionColumn, userColumn, timeStampColumn));
+                    for (String col : columns){
+                        insertDetail.append(", ").append(col);
+                        updateDetail.append(", ").append(col);
+                        deleteDetail.append(", ").append(col);
+                    }
+                    insertDetail.append(")").append(System.lineSeparator());
+                    updateDetail.append(")").append(System.lineSeparator());
+                    deleteDetail.append(")").append(System.lineSeparator());
+                    
+                    //////////////////////
+                    //generate the insert column valuues for the trigger(s)
+                    insertDetail.append("        VALUES SELECT 'insert', user, now()");
+                    updateDetail.append("        VALUES SELECT 'update', user, now()");
+                    deleteDetail.append("        VALUES SELECT 'delete', user, now()");
+                    for (String col : columns){
+                        insertDetail.append(", NEW.").append(col);
+                        updateDetail.append(", NEW.").append(col);
+                        deleteDetail.append(", OLD.").append(col);
+                    }
+                    insertDetail.append(")").append(System.lineSeparator());
+                    updateDetail.append(")").append(System.lineSeparator());
+                    deleteDetail.append(")").append(System.lineSeparator());
+                    insertDetail.append("        RETURN NEW;").append(System.lineSeparator());
+                    updateDetail.append("        RETURN NEW;").append(System.lineSeparator());
+                    deleteDetail.append("        RETURN OLD;").append(System.lineSeparator());
+                    
+                    //////////////////////
+                    //creat the function that the trigger calls
+                    builder.append("CREATE OR REPLACE FUNCTION ").append(functionName).append(" RETURNS TRIGGER AS ")
+                            .append(triggerReference).append(System.lineSeparator());
+                    builder.append("BEGIN").append(System.lineSeparator());
+                    builder.append("    IF (TG_OP = 'DELETE') THEN").append(System.lineSeparator());
+                    builder.append(deleteDetail);                    
+                    builder.append("    ELSEIF (TG_OP = 'INSERT') THEN").append(System.lineSeparator());
+                    builder.append(insertDetail);
+                    builder.append("    ELSEIF (TG_OP = 'UPDATE' ").append(updateConditional).append(System.lineSeparator());
+                    builder.append(updateDetail);
+                    builder.append("    ENDIF;").append(System.lineSeparator());
+                    builder.append("END").append(System.lineSeparator());
+                    builder.append(triggerReference).append(" LANGUAGE plpgsql;").append(System.lineSeparator());
+                    
+                    ///////////////////////                    
+                    //create the trigger
+                    builder.append("CREATE TRIGGER ").append(triggerName).append(System.lineSeparator());
+                    builder.append("AFTER ");
+                    if (onInsert){
+                        builder.append("INSERT ");
+                        firstTrig = false;
+                    }
+                    if (onUpdate){
+                        if (!firstTrig){
+                            builder.append("OR UPDATE ");
+                        }
+                        else {
+                            builder.append("UPDATE ");
+                            firstTrig = false;
+                        }
+                    }
+                    if (onDelete){
+                        if (!firstTrig){
+                            builder.append("OR DELETE ");
+                        }
+                        else {
+                            builder.append("DELETE ");
+                        }
+                    }
+                    builder.append("ON ").append(tableName).append(System.lineSeparator());
+                    builder.append("FOR EACH ROW EXECUTE PROCEDURE ").append(functionName).append("();").append(System.lineSeparator());
+                    //run the sql...
+                    break;
+                case createTriggers:
+                    tableName = unit.getTableName();
+                    triggerName = unit.getTableName() + "_audit";
+                    functionName = "process_" + triggerName;
+                    triggerReference = "$" + triggerName + "$";
+                    auditTableName = unit.getAuditTableName();
+                    break;
+                case fireOnDelete:
+                    onDelete = unit.getFiresTrigger();
+                    break;
+                case fireOnInsert:
+                    onInsert = unit.getFiresTrigger();
+                    break;
+                case fireOnUpdate:
+                    onUpdate = unit.getFiresTrigger();
+                    break;
+                case addTriggerColumn:
+                    if (unit.firesTrigger){
+                        whenColumns.add(unit.getColumnName());
+                    }
+                    columns.add(unit.columnName);
+                    break;
+                case addTriggerAction:
+                    actionColumn = unit.getColumnName();
+                    break;
+                case addTriggerUser:
+                    userColumn = unit.getColumnName();
+                    break;
+                case addTriggerTimeStamp:
+                    timeStampColumn = unit.getColumnName();
+                    break;
+                default:
+                    //should not get here if the list is valid, unless a new changetype
+                    //was added that this DMR does not know about.  If which case - fail.
+                    logger.error("unimplemented DBChangeUnit {%s} for create table operation", unit.getChangeType().toString());
+                    return;
+            }
+        }
+        
+        String schema = this.getSchema();
+        
+        try (Connection conn = dataSource.getConnection()) {
+            String defaultSchema = conn.getSchema();
+            if (null != schema) {
+                conn.setSchema(schema);
+            }
+            Statement stmt = conn.createStatement();
+            stmt.executeUpdate(builder.toString());
+            stmt.close();
+
+            //just in case this code is called with a pooled dataSource
+            conn.setSchema(defaultSchema);
+            
+            
+        } catch (SQLException ex) {
+            logger.error("Create triggers failed...", ex);
+        }
+    }
+
+    private void executeDropTrigger(List<DBChangeUnit> op) {
+        
+        StringBuilder builder = new StringBuilder();
+        String triggerName;
+
+        for (DBChangeUnit unit : op) {
+            switch (unit.changeType) {
+                case begin:
+                    //nothinig
+                    break;
+                case end:
+                    //run the sql...
+                    break;
+                case dropTriggers:
+                    triggerName = unit.tableName + "audit";
+                    builder.append("DROP TRIGGER IF EXISTS").append(triggerName).append("ON ").append(unit.tableName).append(";").append(System.lineSeparator());
+                    break;
+                default:
+                    //should not get here if the list is valid, unless a new changetype
+                    //was added that this DMR does not know about.  If which case - fail.
+                    logger.error("unimplemented DBChangeUnit {%s} for create table operation", unit.getChangeType().toString());
+                    return;
+            }
+        }
+        
+        String schema = this.getSchema();
+        
+        try (Connection conn = dataSource.getConnection()) {
+            String defaultSchema = conn.getSchema();
+            if (null != schema) {
+                conn.setSchema(schema);
+            }
+            Statement stmt = conn.createStatement();
+            stmt.executeUpdate(builder.toString());
+            stmt.close();
+
+            //just in case this code is called with a pooled dataSource
+            conn.setSchema(defaultSchema);
+            
+            
+        } catch (SQLException ex) {
+            logger.error("Drop trigger failed...", ex);
+        }
+    }
+        
 
     @Override
     public void executeDBChangeList(List<DBChangeUnit> units) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        readDBChangeList(units);
+        executeChanges();
     }
 
     @Override
     public void purgeDBChanges() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        operations.clear();
     }
-    
-    
 
-//    String getAuditTableSql(ConfigSource configSource, String tableName){
-//        
-//        String sql;
-//        
-//        String auditTableName =
-//                configSource.getTablePrefix()
-//                + tableName
-//                + configSource.getTablePostfix();
-//        
-//        //check if table already exists
-//        Map existingAuditTables = new CaseInsensitiveMap(configSource.existingAuditTables);
-//        
-//        if (configSource.existingAuditTables.containsKey(auditTableName)){
-//            sql = getAuditTableModifySql(configSource, tableName);
-//        }
-//        else {
-//            sql = getAuditTableCreateSql(configSource, tableName);
-//        }
-//        
-//        return sql;
-//    }
-    
-    /**
-     * LEGACY OF EARLY DEVELOPMENT - NOT USED
-     * Copy column metaData from the source table over to the new audit
-     * table.  Exclude or include columns in the audit table according
-     * the the table configuration data.
-     * 
-     * @param configSource
-     * @param tableToAudit
-     * @return 
-     */
-//    Map getNewAuditTableColumnMetaData (ConfigSource configSource, String tableToAudit){
-//        
-//        TableConfig tc = configSource.getTableConfig(tableToAudit);
-//        
-//        Map<String, Map<String, String>> auditTableColumns = new HashMap<String, Map<String, String>>();
-//        
-//        for (Map.Entry<String, Map<String, String>> entry : tc.getColumns().entrySet() ){
-//            
-//            //ToDo: make this search look for regexp
-//            //ToDo: make this case insensitive
-//            String columnName = entry.getKey();
-//            if (!tc.excludedColumns.containsKey(columnName)
-//                || tc.includedColumns.containsKey(columnName) ){
-//                //include this column in the audit table
-//                String auditColumnName = configSource.getColumnPrefix()
-//                        + columnName + configSource.getColumnPostfix();
-//                Map auditColumnMetaData = new CaseInsensitiveMap();
-//                
-//                //copy metaData from primary table/column map to audit table/ciolumn map
-//                for (Map.Entry<String, String> metaDataEntry : entry.getValue().entrySet() ){
-//                    String metaDataKey = metaDataEntry.getKey();
-//                    String metaDataValue = metaDataEntry.getValue();
-//                    if (metaDataKey.equalsIgnoreCase("IS_AUTOINCREMENT")){
-//                        metaDataValue="NO";
-//                    }
-//                    if (metaDataKey.equalsIgnoreCase("IS_GENERATEDCOLUMN")){
-//                        metaDataValue="NO";
-//                    }
-//                    auditColumnMetaData.put(metaDataKey, metaDataValue);
-//                }
-//                
-//                auditTableColumns.put(auditColumnName, auditColumnMetaData);
-//            }
-//            else {
-//                logger.info("Table: %s  Column: %s excluded", tableToAudit, entry.getKey());                
-//            }
-//        }
-//        
-//        return auditTableColumns;
-//        
-//    }
+    @Override
+    public int getMaxUserNameLength() {
         
-//    String getAuditTableCreateSql(ConfigSource configSource, String tableName){
-//        
-//        StringBuilder builder = new StringBuilder();
-//        
-//        builder.append("create table ").append(tableName).append(System.lineSeparator());
-//        
-//        
-//        
-//        return builder.toString();
-//    }
-//    
-//    String getAuditTableModifySql(ConfigSource configSource, String tableName){
-//        
-//        StringBuilder builder = new StringBuilder();
-//        
-//        TableConfig tc = configSource.getTableConfig(tableName);
-//        
-//        //TODO everything.
-//        
-//        
-//        return builder.toString();
-//    }
+        Integer length = -1;
+         try (Connection conn = dataSource.getConnection()){
 
-    //@Override
-//    public String getUpdateSQL(ConfigSource configSource) {
-//        
-//        StringBuilder builder = new StringBuilder();
-//          
-//        TableConfig tc;
-//        TableConfig atc;
-//        Iterator iter = configSource.existingTables.entrySet().iterator();
-//        while (iter.hasNext()){
-//            Entry e = (Entry) iter.next();
-//            tc = (TableConfig) e.getValue();
-//            String key = (String) e.getKey();
-//            String auditKey = 
-//                    configSource.getTablePrefix()
-//                    + key
-//                    + configSource.getTablePostfix();
-//            atc = configSource.getExistingAuditTable(auditKey); 
-//            
-//            //do magic SQL generation here
-//            ChangeSourceFactory changeSourceFactory = new ChangeSourceFactory(configSource);
-//            
-//            //TO DO - get all of the changes and apply sql in a loop    
-//                        
-//        }
-//        
-//        return builder.toString();
-//
-//    }
+            DatabaseMetaData dmd = conn.getMetaData();
+            length = dmd.getMaxUserNameLength();
+            
+        } catch (SQLException e) {
+            logger.error("error getting maxUserNameLength", e);
+        }
+
+         return length;
+    }
 
 }

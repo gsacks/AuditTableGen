@@ -23,5 +23,8 @@ public enum DBChangeType {
     fireOnUpdate,
     fireOnDelete,
     addTriggerColumn,
+    addTriggerAction,
+    addTriggerUser,
+    addTriggerTimeStamp,
     notSet;  
 }

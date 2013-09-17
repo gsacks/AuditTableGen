@@ -145,11 +145,18 @@ public class AuditTableGen {
 
             configSource.addAttributes(dmr.getConfigAttributes());
             configSource.addTables(dmr.getTables());
+            configSource.setMaxUserNameLength(dmr.getMaxUserNameLength());
             
             ChangeSourceFactory factory = new ChangeSourceFactory(configSource);
             
-            dmr.readDBChangeList(factory.getDBChangeList());
-            dmr.executeChanges();
+            List<DBChangeUnit> unitList = factory.getDBChangeList();
+            if (DBChangeUnit.validateUnitList(unitList)) {
+                dmr.readDBChangeList(unitList);
+                dmr.executeChanges();
+            } else {
+                logger.error("Program error. Database change list not formed properly.");
+                return false;
+            }
             
         }
         
