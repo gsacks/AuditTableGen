@@ -199,6 +199,7 @@ public class ChangeSourceFactory {
             tableChangeUnits.add(new DBChangeUnit(DBChangeType.begin));
             workUnit = new DBChangeUnit(DBChangeType.dropTriggers);
             workUnit.setTableName(baseTableName);
+            tableChangeUnits.add(workUnit);
             tableChangeUnits.add(new DBChangeUnit(DBChangeType.end));
             
             //done.  We don't want to alter any exising audit table
@@ -280,7 +281,7 @@ public class ChangeSourceFactory {
             //create the audit tracking columns
             //action
             if (!auditColumnMap.containsKey(auditActionColumn)){
-                logger.error ("Existing audit table %s does not contain column %s. Creating", auditTableName, auditActionColumn );
+                logger.error ("Existing audit table {} does not contain column {}. Creating", auditTableName, auditActionColumn );
                 workUnit = new DBChangeUnit(DBChangeType.addColumn);
                 workUnit.setColumnName(auditActionColumn);
                 workUnit.setTableName(auditTableName);
@@ -292,7 +293,7 @@ public class ChangeSourceFactory {
             
             //user
             if (!auditColumnMap.containsKey(auditUserColumn)){
-                logger.error ("Existing audit table %s does not contain column %s. Creating", auditTableName, auditUserColumn );
+                logger.error ("Existing audit table {} does not contain column {}. Creating", auditTableName, auditUserColumn );
                 workUnit = new DBChangeUnit(DBChangeType.addColumn);
                 workUnit.setColumnName(auditUserColumn);
                 workUnit.setTableName(auditTableName);
@@ -304,7 +305,7 @@ public class ChangeSourceFactory {
             
             //timestamp
             if (!auditColumnMap.containsKey(auditTimeStampColumn)){            
-                logger.error ("Existing audit table %s does not contain column %s. Creating", auditTableName, auditTimeStampColumn );
+                logger.error ("Existing audit table {} does not contain column {}. Creating", auditTableName, auditTimeStampColumn );
                 workUnit = new DBChangeUnit(DBChangeType.addColumn);
                 workUnit.setColumnName(auditTimeStampColumn);
                 workUnit.setTableName(auditTableName);
@@ -321,12 +322,12 @@ public class ChangeSourceFactory {
                     ColumnDef auditColumn = auditColumnMap.get(baseColumn.name);
                     if (auditColumn.getType().equals(baseColumn.getType())
                             && auditColumn.getSize() >= baseColumn.getSize()
-                            && auditColumn.getDecimalSize() >= baseColumn.getSize()){
+                            && auditColumn.getDecimalSize() >= baseColumn.getDecimalSize()){
                         //nothing to do
                     }
                     else if (auditColumn.getType().equals(baseColumn.getType())
                             && (auditColumn.getSize() < baseColumn.getSize()
-                                || auditColumn.getDecimalSize() < baseColumn.getSize()) ) {
+                                || auditColumn.getDecimalSize() < baseColumn.getDecimalSize()) ) {
                         //type is the same, but size increased
                         workUnit = new DBChangeUnit(DBChangeType.alterColumnSize);
                         workUnit.setTableName(auditTableName);

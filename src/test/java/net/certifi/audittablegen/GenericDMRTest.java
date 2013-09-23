@@ -561,25 +561,87 @@ public class GenericDMRTest {
      * Test of executeChanges method, of class GenericDMR.
      */
     @Test
-    public void testExecuteChanges() {
+    public void testExecuteChanges() throws SQLException {
         System.out.println("executeChanges");
-        GenericDMR instance = null;
+        DataSource realDs = HsqldbDMR.getRunTimeDataSource();
+        GenericDMR instance = new GenericDMR(realDs);
+        List<DBChangeUnit> op = new ArrayList<>();
+        String tableName = "TESTTABLE1";
+        String column1Name = "data";
+        DBChangeUnit unit;
+        unit = new DBChangeUnit(DBChangeType.begin);
+        op.add(unit);
+        unit = new DBChangeUnit(DBChangeType.createTable);
+        unit.setTableName(tableName);
+        op.add(unit);
+        unit = new DBChangeUnit(DBChangeType.addColumn);
+        unit.setTableName(tableName);
+        unit.setColumnName(column1Name);
+        unit.setDataType("varchar");
+        unit.setSize(255);
+        op.add(unit);
+        op.add(new DBChangeUnit(DBChangeType.end));
+        instance.operations.add(op);
+        
         instance.executeChanges();
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        
+        //test if the table got created
+        Connection conn =  realDs.getConnection();
+        Statement stmt = conn.createStatement();
+        String verify = "select table_name from information_schema.system_tables"
+                + " where table_name = '" + tableName + "'";
+        ResultSet rs = stmt.executeQuery(verify);
+        String result = "";
+        while (rs.next()){
+            result = rs.getString(1);
+        }
+        
+        assertEquals(tableName, result);
+        
+
     }
 
     /**
      * Test of executeDBChangeList method, of class GenericDMR.
      */
     @Test
-    public void testExecuteDBChangeList() {
+    public void testExecuteDBChangeList() throws SQLException {
         System.out.println("executeDBChangeList");
-        List<DBChangeUnit> units = null;
-        GenericDMR instance = null;
-        instance.executeDBChangeList(units);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        
+        DataSource realDs = HsqldbDMR.getRunTimeDataSource();
+        GenericDMR instance = new GenericDMR(realDs);
+        List<DBChangeUnit> op = new ArrayList<>();
+        String tableName = "TESTTABLE1";
+        String column1Name = "data";
+        DBChangeUnit unit;
+        unit = new DBChangeUnit(DBChangeType.begin);
+        op.add(unit);
+        unit = new DBChangeUnit(DBChangeType.createTable);
+        unit.setTableName(tableName);
+        op.add(unit);
+        unit = new DBChangeUnit(DBChangeType.addColumn);
+        unit.setTableName(tableName);
+        unit.setColumnName(column1Name);
+        unit.setDataType("varchar");
+        unit.setSize(255);
+        op.add(unit);
+        op.add(new DBChangeUnit(DBChangeType.end));
+
+        instance.executeDBChangeList(op);
+        
+         //test if the table got created
+        Connection conn =  realDs.getConnection();
+        Statement stmt = conn.createStatement();
+        String verify = "select table_name from information_schema.system_tables"
+                + " where table_name = '" + tableName + "'";
+        ResultSet rs = stmt.executeQuery(verify);
+        String result = "";
+        while (rs.next()){
+            result = rs.getString(1);
+        }
+        
+        assertEquals(tableName, result);
+
     }
 
     /**
@@ -645,8 +707,11 @@ public class GenericDMRTest {
         List<DBChangeUnit> op = dmr.operations.remove();
         
         String result = dmr.getCreateTableSQL(op);
+        
+        //don't know a good way to test the quality of the SQL generated, so just printing it.
         System.out.println(result);
-        assertEquals("", result);
+        
+        assertNotNull(result);
 
     }
 
@@ -656,13 +721,59 @@ public class GenericDMRTest {
     @Test
     public void testGetAlterTableSQL() {
         System.out.println("getAlterTableSQL");
-        List<DBChangeUnit> op = null;
-        GenericDMR instance = null;
-        String expResult = "";
-        String result = instance.getAlterTableSQL(op);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        
+        //set-up using real objects
+        ConfigSource realConfigSource = new ConfigSource();
+        TableDef td = new TableDef();
+        td.name = "Table1";
+        ColumnDef cd = new ColumnDef();
+        cd.name = "Table1Id";
+        cd.type = "integer";
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "Data";
+        cd.type = "varchar";
+        cd.size = 255;
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "NewData";
+        cd.type = "varchar";
+        cd.size = 255;
+        td.addColumn(cd);
+        realConfigSource.addTable(td);
+        
+        //create the audit table without the new column
+        td = new TableDef();
+        td.name = "zz_Table1";
+        cd = new ColumnDef();
+        cd.name = "zz_Table1Id";
+        cd.type = "integer";
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "Table1Id";
+        cd.type = "integer";
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "Data";
+        cd.type = "varchar";
+        cd.size = 255;
+        td.addColumn(cd);
+        realConfigSource.addTable(td);
+        
+        realConfigSource.dbAttribs = new ArrayList<>();
+        ChangeSourceFactory factory = new ChangeSourceFactory(realConfigSource);
+        List<DBChangeUnit> units = factory.getDBChangeList();
+        dmr.readDBChangeList(units);
+                
+        List<DBChangeUnit> op = dmr.operations.remove();
+                
+        String result = dmr.getAlterTableSQL(op);
+        
+        //don't know a good way to test the quality of the SQL generated, so just printing it.
+        System.out.println(result);
+        
+        assertNotNull(result);
+
     }
 
     /**
@@ -707,7 +818,7 @@ public class GenericDMRTest {
         
         String result = dmr.getCreateTriggerSQL(op);
         System.out.println(result);
-        assertEquals("", result);
+        assertNotNull(result);
     }
 
     /**
@@ -716,26 +827,66 @@ public class GenericDMRTest {
     @Test
     public void testGetDropTriggerSQL() {
         System.out.println("getDropTriggerSQL");
-        List<DBChangeUnit> op = null;
-        GenericDMR instance = null;
+        
+        //set-up using real objects
+        ConfigSource realConfigSource = new ConfigSource();
+        TableDef td = new TableDef();
+        td.name = "Table1";
+        ColumnDef cd = new ColumnDef();
+        cd.name = "Table1Id";
+        cd.type = "integer";
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "Data";
+        cd.type = "varchar";
+        cd.size = 255;
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "DataExclude";
+        cd.type = "varchar";
+        cd.size = 255;
+        td.addColumn(cd);
+        realConfigSource.addTable(td);
+        realConfigSource.dbAttribs = new ArrayList<>();
+        ConfigAttribute attrib = new ConfigAttribute();
+        attrib.setAttribute("exclude");
+        attrib.setTableName("Table1");
+        realConfigSource.addAttribute(attrib);
+        
+        ChangeSourceFactory factory = new ChangeSourceFactory(realConfigSource);
+        List<DBChangeUnit> units = factory.getDBChangeList();
+        dmr.readDBChangeList(units);
+        
+        
+        List<DBChangeUnit> op = dmr.operations.remove();
+        
         String expResult = "";
-        String result = instance.getDropTriggerSQL(op);
-        assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+        String result = dmr.getDropTriggerSQL(op);
+        System.out.println(result);
+        assertNotNull(result);
+
     }
 
     /**
      * Test of executeUpdate method, of class GenericDMR.
      */
     @Test
-    public void testExecuteUpdate() {
+    public void testExecuteUpdate() throws SQLException {
+        
         System.out.println("executeUpdate");
-        String query = "";
-        GenericDMR instance = null;
+        String query = "CREATE TABLE zz_Table1 ( \n"
+                + "zz_Table1Id integer PRIMARY KEY \n"
+                + ", Table1Id integer \n"
+                + ", Data varchar (255) \n"
+                + ", zz_action char (6) \n"
+                + ", zz_userId char \n"
+                + ", zz_ts timestamp \n"
+                + ")";
+
+        DataSource realDs = HsqldbDMR.getRunTimeDataSource();
+        GenericDMR instance = new GenericDMR(realDs);
         instance.executeUpdate(query);
-        // TODO review the generated test code and remove the default call to fail.
-        fail("The test case is a prototype.");
+
     }
     
     

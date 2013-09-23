@@ -566,7 +566,7 @@ class GenericDMR implements DataSourceDMR {
                 default:
                     //should not get here if the list is valid, unless a new changetype
                     //was added that this DMR does not know about.  If which case - fail.
-                    logger.error("unimplemented DBChangeUnit '{}' for alter table operation", unit.getChangeType().toString());
+                    logger.error("unimplemented DBChangeUnit '{}' for create table operation", unit.getChangeType().toString());
                     return null;
             }
         }
@@ -598,6 +598,9 @@ class GenericDMR implements DataSourceDMR {
                     if (!firstCol){
                         builder.append(", ");
                     }
+                    else {
+                        firstCol = false;
+                    }
                     builder.append("ADD COLUMN ").append(unit.columnName).append(" ").append(unit.dataType);
                     if (unit.size > 0) {
                         builder.append(" (").append(unit.size);
@@ -608,10 +611,14 @@ class GenericDMR implements DataSourceDMR {
                         builder.append(") ");
                     }
                     builder.append(System.lineSeparator());
+                    break;
                 case alterColumnSize:
                 case alterColumnType:
                     if (!firstCol){
                         builder.append(", ");
+                    }
+                    else {
+                        firstCol = false;
                     }
                     builder.append("ALTER COLUMN ").append(unit.columnName).append(" ").append(unit.dataType);
                     if (unit.size > 0) {
@@ -628,7 +635,7 @@ class GenericDMR implements DataSourceDMR {
                 default:
                     //should not get here if the list is valid, unless a new changetype
                     //was added that this DMR does not know about.  If which case - fail.
-                    logger.error("unimplemented DBChangeUnit {%s} for drop trigger operation", unit.getChangeType().toString());
+                    logger.error("unimplemented DBChangeUnit {} for alter table operation", unit.getChangeType().toString());
                     return null;
             }
         }
@@ -803,7 +810,7 @@ class GenericDMR implements DataSourceDMR {
                 default:
                     //should not get here if the list is valid, unless a new changetype
                     //was added that this DMR does not know about.  If which case - fail.
-                    logger.error("unimplemented DBChangeUnit {%s} for create table operation", unit.getChangeType().toString());
+                    logger.error("unimplemented DBChangeUnit {} for create trigger operation", unit.getChangeType().toString());
                     return null;
             }
         }
@@ -820,19 +827,19 @@ class GenericDMR implements DataSourceDMR {
         for (DBChangeUnit unit : op) {
             switch (unit.changeType) {
                 case begin:
-                    //nothinig
+                    //nothing
                     break;
                 case end:
                     //run the sql...
                     break;
                 case dropTriggers:
                     triggerName = unit.tableName + "audit";
-                    builder.append("DROP TRIGGER IF EXISTS").append(triggerName).append("ON ").append(unit.tableName).append(";").append(System.lineSeparator());
+                    builder.append("DROP TRIGGER IF EXISTS ").append(triggerName).append(" ON ").append(unit.tableName).append(";").append(System.lineSeparator());
                     break;
                 default:
                     //should not get here if the list is valid, unless a new changetype
                     //was added that this DMR does not know about.  If which case - fail.
-                    logger.error("unimplemented DBChangeUnit {%s} for create table operation", unit.getChangeType().toString());
+                    logger.error("unimplemented DBChangeUnit {} for drop trigger operation", unit.getChangeType().toString());
                     return null;
             }
         }
