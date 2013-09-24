@@ -73,7 +73,7 @@ public class AuditTableGen {
             //known dataSource with specific implementation requirements
             //ie PostgrresDMR, HsqldbDMR...            
         }
-        if (dmd.getDriverName().toLowerCase().contains("hsqldb")) {
+        else if (dmd.getDriverName().toLowerCase().contains("hsqldb")) {
             dmr = new HsqldbDMR(dataSource, schema);
             //known dataSource with specific implementation requirements
             //ie PostgrresDMR, HsqldbDMR...            
@@ -204,9 +204,9 @@ public class AuditTableGen {
                 .append("Target Catalog: ").append(catalog).append(System.lineSeparator())
                 .append("Target Schema: ").append(schema).append(System.lineSeparator());
 
-       if (dmr.hasAuditConfigTable()){
-           s.append("Has auditConfigSource table").append(System.lineSeparator());
-       }
+//       if (dmr.hasAuditConfigTable()){
+//           s.append("Has auditConfigSource table").append(System.lineSeparator());
+//       }
        
        conn.close();
        
@@ -218,8 +218,8 @@ public class AuditTableGen {
         Properties prop;
         Options options = new Options();
         options.addOption("h", "help", false, "display this message");
-//        options.addOption("d", "Database", true, "Name of the database to connect to");
-//        options.addOption("s", "Server", true, "Name of the Server to connect to");
+        options.addOption("d", "database", true, "Name of the database to connect to");
+        options.addOption("s", "server", true, "Name of the Server to connect to");
         options.addOption("driver", true, "specifiy jdbc driver. Only used if can't resolve from url");
         options.addOption("u", "username", true, "DB server login username");
         options.addOption("p", "password", true, "DB server login password");
@@ -268,13 +268,6 @@ public class AuditTableGen {
         }
 
         Boolean result = atg.updateAuditTables();
-
-        if (result){
-            logger.info("success");
-        }
-        else {
-            logger.info("failure");
-        }
         
         logger.info("Done.");
     }
@@ -335,22 +328,23 @@ public class AuditTableGen {
 
         //not going to worry about parsing db,server for now
         //just require a url, or connect to the in mem database
-//      List<String> argList = Arrays.asList("driver","Database","Server");           
-//      for ( String arg : argList ){
-//           if (cmd.hasOption(arg)){
-//                prop.setProperty(arg, cmd.getOptionValue(arg));
-//            }
-//            else {
-//                logger.warn("Missing parameter: {}", arg);
-//                isValid = false;
-//            }
-//        }            
-//      }
+      List<String> argList = Arrays.asList("driver","database","server");           
+      for ( String arg : argList ){
+           if (cmd.hasOption(arg)){
+                prop.setProperty(arg, cmd.getOptionValue(arg));
+            }
+            else {
+                logger.warn("Missing parameter: {}", arg);
+                isValid = false;
+            }
+        }            
+      
 
         //more params (for now)
         //do not require - these can also be passed on the url
-        if (prop.containsKey("url")) {
-            List<String> argList = Arrays.asList("username", "password","schema");
+      
+        if (true){ //(prop.containsKey("url")) {
+            argList = Arrays.asList("username", "password","schema");
             for (String arg : argList) {
                 if (cmd.hasOption(arg)) {
                     prop.setProperty(arg, cmd.getOptionValue(arg));
@@ -360,7 +354,7 @@ public class AuditTableGen {
                 }
             }
         }
-
+    
         //optional params - this is for the output script
         if (cmd.hasOption("filename")) {
             prop.setProperty("filename", cmd.getOptionValue("filename"));
@@ -387,7 +381,19 @@ public class AuditTableGen {
                 //take a shot at it with user supplied driver & url
                 ds = GenericDMR.getRunTimeDataSource(props);
             }
-        } else {
+        } else if ( props.containsKey("driver")) {
+            driver = props.getProperty("driver", "");
+            if (driver.toLowerCase().contains("hsqldb")) {
+                ds = HsqldbDMR.getRunTimeDataSource(props);
+            } else if (driver.toLowerCase().contains("postgresql")) {
+                ds = PostgresqlDMR.getRunTimeDataSource(props);
+            } else {
+                //take a shot at it with user supplied driver & url
+                ds = GenericDMR.getRunTimeDataSource(props);
+            }
+        } 
+        else {
+            
             //no url provided
             //in memory hsqldb - testing only
             ds = HsqldbDMR.getRunTimeDataSource();

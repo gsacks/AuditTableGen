@@ -158,6 +158,8 @@ public class ChangeSourceFactory {
         
         List<DBChangeUnit> tableChangeUnits = new ArrayList();
         List<DBChangeUnit> tableRenameColumns = new ArrayList();
+        List<DBChangeUnit> partialChangeUnits = new ArrayList();
+        
         DBChangeUnit workUnit;
         String baseTableName = baseTableDef.getName();
         
@@ -272,7 +274,7 @@ public class ChangeSourceFactory {
             tableChangeUnits.add(workUnit);
             
             //to make this a little easier, get a map for the column list
-            Map<String, ColumnDef> auditColumnMap = new HashMap<>();
+            Map<String, ColumnDef> auditColumnMap = new CaseInsensitiveMap();
             for ( ColumnDef auditColumn : auditTableDef.getColumns()){
                 auditColumnMap.put(auditColumn.getName(), auditColumn);
             }
@@ -320,12 +322,12 @@ public class ChangeSourceFactory {
                 if (auditColumnMap.containsKey(baseColumn.name)){
                     //existing column
                     ColumnDef auditColumn = auditColumnMap.get(baseColumn.name);
-                    if (auditColumn.getType().equals(baseColumn.getType())
+                    if (auditColumn.getType().equalsIgnoreCase(baseColumn.getType())
                             && auditColumn.getSize() >= baseColumn.getSize()
                             && auditColumn.getDecimalSize() >= baseColumn.getDecimalSize()){
                         //nothing to do
                     }
-                    else if (auditColumn.getType().equals(baseColumn.getType())
+                    else if (auditColumn.getType().equalsIgnoreCase(baseColumn.getType())
                             && (auditColumn.getSize() < baseColumn.getSize()
                                 || auditColumn.getDecimalSize() < baseColumn.getDecimalSize()) ) {
                         //type is the same, but size increased

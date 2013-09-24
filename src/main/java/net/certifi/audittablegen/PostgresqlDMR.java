@@ -4,16 +4,17 @@
  */
 package net.certifi.audittablegen;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import com.google.common.base.Throwables;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.sql.DataSource;
+import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.commons.dbcp.BasicDataSource;
 import org.postgresql.Driver;
+import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -42,81 +43,33 @@ public class PostgresqlDMR extends GenericDMR {
      */
     static DataSource getRunTimeDataSource(Properties props){
         
-        BasicDataSource dataSource = new BasicDataSource();
-        
-        dataSource.setDriverClassName("org.postgresql.Driver");
-        dataSource.setUsername(props.getProperty("username"));
+        //BasicDataSource dataSource = new BasicDataSource();
+        //PGPoolingDataSource dataSource = new PGPoolingDataSource();
+        PGSimpleDataSource dataSource = new PGSimpleDataSource();
+        int port;
+        dataSource.setUser(props.getProperty("username"));
         dataSource.setPassword(props.getProperty("password"));
-        dataSource.setUrl(props.getProperty("url"));
-        dataSource.setMaxActive(10);
-        dataSource.setMaxIdle(5);
-        dataSource.setInitialSize(5);
-        dataSource.setValidationQuery("SELECT 1");
+        //dataSource.setInitialConnections(2);
+        dataSource.setApplicationName("AuditTableGen");
+        dataSource.setServerName(props.getProperty("server"));
+        dataSource.setDatabaseName(props.getProperty("database"));
+        if (props.containsKey("port")){
+            port = Integer.getInteger(props.getProperty("port", "5432"));
+            dataSource.setPortNumber(port);
+        }
+        
+        //dataSource.setDriverClassName("org.postgresql.Driver");
+        //dataSource.setUsername(props.getProperty("username"));
+        //dataSource.setPassword(props.getProperty("password"));
+        //dataSource.setUrl(props.getProperty("url"));
+        //dataSource.setMaxActive(10);
+        //dataSource.setMaxIdle(5);
+        //dataSource.setInitialSize(5);
+        //dataSource.setValidationQuery("SELECT 1");
         
         return dataSource;
     }
             
-    void createTestTable () throws SQLException{
-        
-        //System.out.println("dataSourse is NOT null:" + dmd.getURL());
-        
-        String SQL = "Create table test1 (test1Id integer not null identity, test1Data integer  )";
-        try {
-            Connection conn = dataSource.getConnection();
-            System.out.println("here1");
-            if (dataSource == null){
-                System.out.println("dataSourse is null");
-                System.out.println("here2");
-            }
-            else {
-                System.out.println("dataSourse is NOT null:" + dataSource.toString());
-                System.out.println("here3");
-            }
-            
-            Statement stmt = conn.createStatement();
-            
-            if (stmt == null){
-                System.out.println("stmt is null");
-            }
-            else {
-                System.out.println("stmt is NOT null");
-            }
-            
-            
-            stmt.executeUpdate(SQL);
-            
-            stmt.executeUpdate("insert into test1 (test1Data) values 1");
-            
-            stmt.close();
-            
-            conn.close();
-            
-        } catch (SQLException ex) {
-            logger.error("Error creating test table:" + ex.getMessage() );
-        }
-        
-    }
-    
-    void selectTestRow (){
-        
-        try {
-            Connection conn = dataSource.getConnection();
-            
-            Statement stmt = conn.createStatement();
-            
-            ResultSet rs = stmt.executeQuery("select * from test1");
-
-            while (rs.next()) {
-                String id = rs.getString("test1Id");
-                String data = rs.getString("test1Data");
-                System.out.println("Id:" + id + "  Data:" + data);
-            }
-        } catch (SQLException ex) {
-            logger.error("Error selecting from test table:" + ex.getMessage() );
-        }
-        
-    }
-    
     public void printDataSourceStats() {
         try {
             if (dataSource.isWrapperFor(BasicDataSource.class)){
@@ -135,30 +88,66 @@ public class PostgresqlDMR extends GenericDMR {
     }
     
     /**
-     * When KeepOpen is true, ensures that the connection is working.
-     * When KeepOpen is false, attempts a temporary connection to 
-     *   validate the DataSource, but does not keep it open.
+     * Get List of ColumnDef objects for all tables
+     * in the targeted database/schema.  Postgres specific code replaces 
+     * 'serial' date type with integer, because the column in the audit table
+     * must be of type integer and not serial.  Since this data is interpreted
+     * by ChangeSourceFactory, which should be database independent, the
+     * translation needs to be in the DMR.
      * 
-     * @return true if a connection to the source can be established
-     *         false if a connection cannot be established
+     * @param tableName
+     * @return ArrayList of ColumnDef objects or an empty list if none are found.
      */
-    //@Override
-    public boolean ensureConnection() {
-
-        Connection conn;
-
+    @Override
+    public List getColumns (String tableName){
+        
+        List columns = new ArrayList<>();
+        
         try {
-            conn = dataSource.getConnection();
-            if (conn != null && conn.isValid(15)) {
-                conn.close();
-                return true;
+            Connection conn = dataSource.getConnection();
+            DatabaseMetaData dmd = conn.getMetaData();
+            ResultSet rs = dmd.getColumns(null, verifiedSchema, tableName, null);
+            
+            //load all of the metadata in the result set into a map for each column
+            
+            ResultSetMetaData rsmd = rs.getMetaData();
+            int metaDataColumnCount = rsmd.getColumnCount();
+            if (! rs.isBeforeFirst()) {
+                throw new RuntimeException("No results for DatabaseMetaData.getColumns(" + verifiedSchema + "." + tableName + ")");
             }
-
-        } catch (SQLException ex) {
-            logger.error("Error validating connection:" + ex.getMessage() );
+            while (rs.next()){
+                ColumnDef columnDef = new ColumnDef();
+                Map columnMetaData = new CaseInsensitiveMap();
+                for (int i = 1; i <= metaDataColumnCount; i++){
+                    columnMetaData.put(rsmd.getColumnName(i), rs.getString(i));
+                }
+                columnDef.setName(rs.getString("COLUMN_NAME"));
+                
+                String type_name = rs.getString("TYPE_NAME");
+                if ( type_name.equalsIgnoreCase("serial")){
+                    columnDef.setType("integer");
+                }
+                else {
+                    columnDef.setType(type_name);
+                }
+                
+                if (true){
+                    //only set size for types that require it
+                    columnDef.setSize(rs.getInt("COLUMN_SIZE"));
+                }
+                columnDef.setDecimalSize(rs.getInt("DECIMAL_DIGITS"));
+                columnDef.setSourceMeta(columnMetaData);
+                
+                columns.add(columnDef);
+            }
+            
         }
-
-        return false;
+        catch (SQLException e) {
+            throw Throwables.propagate(e);
+        }
+        
+        return columns;
+        
     }
-   
+    
 }

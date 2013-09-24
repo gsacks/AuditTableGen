@@ -701,6 +701,7 @@ public class GenericDMRTest {
         realConfigSource.dbAttribs = new ArrayList<>();
         ChangeSourceFactory factory = new ChangeSourceFactory(realConfigSource);
         List<DBChangeUnit> units = factory.getDBChangeList();
+        dmr.verifiedSchema = "public";
         dmr.readDBChangeList(units);
         
         
@@ -762,6 +763,7 @@ public class GenericDMRTest {
         
         realConfigSource.dbAttribs = new ArrayList<>();
         ChangeSourceFactory factory = new ChangeSourceFactory(realConfigSource);
+        dmr.verifiedSchema = "public";
         List<DBChangeUnit> units = factory.getDBChangeList();
         dmr.readDBChangeList(units);
                 
@@ -810,6 +812,7 @@ public class GenericDMRTest {
         
         ChangeSourceFactory factory = new ChangeSourceFactory(realConfigSource);
         List<DBChangeUnit> units = factory.getDBChangeList();
+        dmr.verifiedSchema = "public";
         dmr.readDBChangeList(units);
         
         
@@ -855,6 +858,7 @@ public class GenericDMRTest {
         
         ChangeSourceFactory factory = new ChangeSourceFactory(realConfigSource);
         List<DBChangeUnit> units = factory.getDBChangeList();
+        dmr.verifiedSchema = "public";
         dmr.readDBChangeList(units);
         
         

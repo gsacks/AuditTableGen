@@ -174,18 +174,27 @@ class GenericDMR implements DataSourceDMR {
     public List getConfigAttributes(){
         
         StringBuilder builder = new StringBuilder();
-        builder.append("select attribute, table, column, value from ").append(verifiedAuditConfigTable);
+        String schema;
+        
+        if (verifiedSchema != null){
+            schema = verifiedSchema + ".";
+        }
+        else {
+            schema = "";
+        }
+        
+        builder.append("select attribute, table, column, value from ").append(schema).append(verifiedAuditConfigTable);
                 
         List<ConfigAttribute> attributes = new ArrayList();
         
         try {
-            String schema = this.getSchema();    
+ 
             Connection conn = dataSource.getConnection();
-            String defaultSchema = conn.getSchema();
+            //String defaultSchema = conn.getSchema();
 
-            if ( schema != null){
-                conn.setSchema(schema);
-            }
+            //if ( schema != null){
+            //    conn.setSchema(schema);
+            //}
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(builder.toString());
             
@@ -201,7 +210,7 @@ class GenericDMR implements DataSourceDMR {
                 
             }     
             
-            conn.setSchema(defaultSchema);
+            //conn.setSchema(defaultSchema);
             
             rs.close();
             stmt.close();
@@ -299,8 +308,11 @@ class GenericDMR implements DataSourceDMR {
                 }
                 columnDef.setName(rs.getString("COLUMN_NAME"));
                 columnDef.setType(rs.getString("TYPE_NAME"));
-                columnDef.setSize(rs.getInt("COLUMN_SIZE"));
-                columnDef.setDecimalSize(rs.getInt("DECIMAL_SIZE"));
+                if (true){
+                    //only set size for types that require it
+                    columnDef.setSize(rs.getInt("COLUMN_SIZE"));
+                }
+                columnDef.setDecimalSize(rs.getInt("DECIMAL_DIGITS"));
                 columnDef.setSourceMeta(columnMetaData);
                 
                 columns.add(columnDef);
@@ -464,7 +476,7 @@ class GenericDMR implements DataSourceDMR {
                 default:
                     //should not get here if the list is valid, unless a new changetype
                     //was added that this DMR does not know about.  If which case - fail.
-                    logger.error ("unimplemented DBChangeUnit {%s}", unit.getChangeType().toString());
+                    logger.error ("unimplemented DBChangeUnit {}", unit.getChangeType().toString());
                     return;
                     
             }
@@ -502,12 +514,12 @@ class GenericDMR implements DataSourceDMR {
                 default:
                     //should not get here if the list is valid, unless a new changetype
                     //was added that this DMR does not know about.  If which case - fail.
-                    logger.error("unimplemented DBChangeUnit {%s}", op.get(1).getChangeType().toString());
+                    logger.error("unimplemented DBChangeUnit {}", op.get(1).getChangeType().toString());
                     return;
             }
             
             if (query == null){
-                logger.error("Error generating update SQL for changeList", DBChangeUnit.ListToString(op));
+                logger.error("Error generating update SQL for changeList: {}", DBChangeUnit.ListToString(op));
                 return;
             }
             else {
@@ -522,6 +534,14 @@ class GenericDMR implements DataSourceDMR {
         StringBuilder builder = new StringBuilder();
         StringBuilder constraints = new StringBuilder();
         boolean firstCol = true;
+        String schema;
+        
+        if (verifiedSchema != null){
+            schema = verifiedSchema + ".";
+        }
+        else {
+            schema = "";
+        }
 
         for (DBChangeUnit unit : op) {
             switch (unit.changeType) {
@@ -534,7 +554,7 @@ class GenericDMR implements DataSourceDMR {
                     //execute SQL here...
                     break;
                 case createTable:
-                    builder.append("CREATE TABLE ").append(unit.tableName).append(" (").append(System.lineSeparator());
+                    builder.append("CREATE TABLE ").append(schema).append(unit.tableName).append(" (").append(System.lineSeparator());
                     break;
                 case addColumn:
                     if (!firstCol){
@@ -580,6 +600,14 @@ class GenericDMR implements DataSourceDMR {
         StringBuilder builder = new StringBuilder();
         StringBuilder constraints = new StringBuilder();
         boolean firstCol = true;
+        String schema;
+        
+        if (verifiedSchema != null){
+            schema = verifiedSchema + ".";
+        }
+        else {
+            schema = "";
+        }
 
         for (DBChangeUnit unit : op) {
             switch (unit.changeType) {
@@ -588,11 +616,9 @@ class GenericDMR implements DataSourceDMR {
                     break;
                 case end:
                     builder.append(constraints);
-                    //builder.append(")").append(System.lineSeparator());
-                    //execute SQL here...
                     break;
                 case alterTable:
-                    builder.append("ALTER TABLE ").append(unit.tableName).append(System.lineSeparator());
+                    builder.append("ALTER TABLE ").append(schema).append(unit.tableName).append(System.lineSeparator());
                     break;
                 case addColumn:
                     if (!firstCol){
@@ -620,7 +646,7 @@ class GenericDMR implements DataSourceDMR {
                     else {
                         firstCol = false;
                     }
-                    builder.append("ALTER COLUMN ").append(unit.columnName).append(" ").append(unit.dataType);
+                    builder.append("ALTER COLUMN ").append(unit.columnName).append(" TYPE ").append(unit.dataType);
                     if (unit.size > 0) {
                         builder.append(" (").append(unit.size);
 
@@ -629,6 +655,15 @@ class GenericDMR implements DataSourceDMR {
                         }
                         builder.append(") ");
                     }
+                    builder.append(System.lineSeparator());
+                case alterColumnName:
+                    if (!firstCol){
+                        builder.append(", ");
+                    }
+                    else {
+                        firstCol = false;
+                    }
+                    builder.append("RENAME COLUMN ").append(unit.columnName).append(" TO ").append(unit.newColumnName);
                     builder.append(System.lineSeparator());
                     
                     break;
@@ -665,6 +700,14 @@ class GenericDMR implements DataSourceDMR {
         boolean onUpdate = true;
         List<String> columns = new ArrayList<>();
         List<String> whenColumns = new ArrayList<>();
+        String schema;
+        
+        if (verifiedSchema != null){
+            schema = verifiedSchema + ".";
+        }
+        else {
+            schema = "";
+        }
 
         for (DBChangeUnit unit : op) {
             switch (unit.changeType) {
@@ -703,9 +746,9 @@ class GenericDMR implements DataSourceDMR {
                     
                     //////////////////////                     
                     //generate the detail insert column list for the trigger(s)
-                    insertDetail.append(String.format("        INSERT INTO %s (%s, %s, %s", auditTableName, actionColumn, userColumn, timeStampColumn));
-                    updateDetail.append(String.format("        INSERT INTO %s (%s, %s, %s", auditTableName, actionColumn, userColumn, timeStampColumn));
-                    deleteDetail.append(String.format("        INSERT INTO %s (%s, %s, %s", auditTableName, actionColumn, userColumn, timeStampColumn));
+                    insertDetail.append(String.format("        INSERT INTO %s%s (%s, %s, %s", schema, auditTableName, actionColumn, userColumn, timeStampColumn));
+                    updateDetail.append(String.format("        INSERT INTO %s%s (%s, %s, %s", schema, auditTableName, actionColumn, userColumn, timeStampColumn));
+                    deleteDetail.append(String.format("        INSERT INTO %s%s (%s, %s, %s", schema, auditTableName, actionColumn, userColumn, timeStampColumn));
                     for (String col : columns){
                         insertDetail.append(", ").append(col);
                         updateDetail.append(", ").append(col);
@@ -725,16 +768,16 @@ class GenericDMR implements DataSourceDMR {
                         updateDetail.append(", NEW.").append(col);
                         deleteDetail.append(", OLD.").append(col);
                     }
-                    insertDetail.append(")").append(System.lineSeparator());
-                    updateDetail.append(")").append(System.lineSeparator());
-                    deleteDetail.append(")").append(System.lineSeparator());
+                    insertDetail.append(";").append(System.lineSeparator());
+                    updateDetail.append(";").append(System.lineSeparator());
+                    deleteDetail.append(";").append(System.lineSeparator());
                     insertDetail.append("        RETURN NEW;").append(System.lineSeparator());
                     updateDetail.append("        RETURN NEW;").append(System.lineSeparator());
                     deleteDetail.append("        RETURN OLD;").append(System.lineSeparator());
                     
                     //////////////////////
                     //creat the function that the trigger calls
-                    builder.append("CREATE OR REPLACE FUNCTION ").append(functionName).append(" RETURNS TRIGGER AS ")
+                    builder.append("CREATE OR REPLACE FUNCTION ").append(schema).append(functionName).append(" RETURNS TRIGGER AS ")
                             .append(triggerReference).append(System.lineSeparator());
                     builder.append("BEGIN").append(System.lineSeparator());
                     builder.append("    IF (TG_OP = 'DELETE') THEN").append(System.lineSeparator());
@@ -743,7 +786,7 @@ class GenericDMR implements DataSourceDMR {
                     builder.append(insertDetail);
                     builder.append("    ELSEIF (TG_OP = 'UPDATE' ").append(updateConditional).append(System.lineSeparator());
                     builder.append(updateDetail);
-                    builder.append("    ENDIF;").append(System.lineSeparator());
+                    builder.append("    END IF;").append(System.lineSeparator());
                     builder.append("END").append(System.lineSeparator());
                     builder.append(triggerReference).append(" LANGUAGE plpgsql;").append(System.lineSeparator());
                     
@@ -772,14 +815,14 @@ class GenericDMR implements DataSourceDMR {
                             builder.append("DELETE ");
                         }
                     }
-                    builder.append("ON ").append(tableName).append(System.lineSeparator());
-                    builder.append("FOR EACH ROW EXECUTE PROCEDURE ").append(functionName).append("();").append(System.lineSeparator());
+                    builder.append("ON ").append(schema).append(tableName).append(System.lineSeparator());
+                    builder.append("FOR EACH ROW EXECUTE PROCEDURE ").append(schema).append(functionName).append(";").append(System.lineSeparator());
                     //run the sql...
                     break;
                 case createTriggers:
                     tableName = unit.getTableName();
                     triggerName = unit.getTableName() + "_audit";
-                    functionName = "process_" + triggerName;
+                    functionName = "process_" + triggerName + "()";
                     triggerReference = "$" + triggerName + "$";
                     auditTableName = unit.getAuditTableName();
                     break;
@@ -823,6 +866,14 @@ class GenericDMR implements DataSourceDMR {
         
         StringBuilder builder = new StringBuilder();
         String triggerName;
+        String schema;
+        
+        if (verifiedSchema != null){
+            schema = verifiedSchema + ".";
+        }
+        else {
+            schema = "";
+        }
 
         for (DBChangeUnit unit : op) {
             switch (unit.changeType) {
@@ -834,7 +885,7 @@ class GenericDMR implements DataSourceDMR {
                     break;
                 case dropTriggers:
                     triggerName = unit.tableName + "audit";
-                    builder.append("DROP TRIGGER IF EXISTS ").append(triggerName).append(" ON ").append(unit.tableName).append(";").append(System.lineSeparator());
+                    builder.append("DROP TRIGGER IF EXISTS ").append(triggerName).append(" ON ").append(schema).append(unit.tableName).append(";").append(System.lineSeparator());
                     break;
                 default:
                     //should not get here if the list is valid, unless a new changetype
@@ -852,17 +903,27 @@ class GenericDMR implements DataSourceDMR {
 
         String schema = this.getSchema();
         
+        logger.debug("running SQL");
+        logger.debug(query);
+        
         try (Connection conn = dataSource.getConnection()) {
-            String defaultSchema = conn.getSchema();
-            if (null != schema) {
-                conn.setSchema(schema);
-            }
+            String defaultSchema = null;
+            
+//            try {
+//                defaultSchema = conn.getSchema();
+//            }
+//            catch (Exception e) {
+//                logger.error("Connection.getSchema not implemented", e);
+//            }
+//            if (null != schema) {
+//                conn.setSchema(schema);
+//            }
             Statement stmt = conn.createStatement();
             stmt.executeUpdate(query);
             stmt.close();
 
             //just in case this code is called with a pooled dataSource
-            conn.setSchema(defaultSchema);
+//            conn.setSchema(defaultSchema);
             
             
         } catch (SQLException ex) {
