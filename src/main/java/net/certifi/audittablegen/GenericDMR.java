@@ -352,10 +352,6 @@ class GenericDMR implements DataSourceDMR {
             DatabaseMetaData dmd = conn.getMetaData();
             ResultSet rs = dmd.getTypeInfo();
 
-            //load all of the metadata in the result set into a map for each column
-
-            ResultSetMetaData rsmd = rs.getMetaData();
-            int metaDataColumnCount = rsmd.getColumnCount();
             if (!rs.isBeforeFirst()) {
                 throw new RuntimeException("No results for DatabaseMetaData.getTypeInfo()");
             }

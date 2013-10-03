@@ -470,6 +470,7 @@ public class GenericDMRTest {
         dmr.verifiedSchema = "public";
         ResultSet rs = mock(ResultSet.class);
         ResultSet rsCol = mock(ResultSet.class);
+        ResultSet rsTypes = mock(ResultSet.class);
         ResultSetMetaData rsmd = mock(ResultSetMetaData.class);
         when(dmd.getTables(null, dmr.verifiedSchema, null, new String[]{"TABLE"})).thenReturn(rs);
         when(dmd.getColumns(null, dmr.verifiedSchema, "address", null)).thenReturn(rsCol);
@@ -482,6 +483,15 @@ public class GenericDMRTest {
         when(rs.getString("TABLE_NAME")).thenReturn("address","person");
         //when(rs.getString(anyString())).thenReturn("ta","tb");
         //when(rs.getInt(anyString())).thenReturn(1,2,3,4);
+        
+        //mock getting data types from db
+        //they aren't checked in this test, since no columns are defined.
+        when(dmd.getTypeInfo()).thenReturn(rsTypes);
+        when(rsTypes.isBeforeFirst()).thenReturn(Boolean.TRUE);
+        when(rsTypes.next()).thenReturn(true, true, false);
+        when(rsTypes.getString("TYPE_NAME")).thenReturn("integer","char");
+        when(rsTypes.getString("CREATE_PARAMS")).thenReturn(null,"length");
+        
         List expResult = null;
         List result = dmr.getTables();
         assertEquals(2, result.size());
@@ -499,6 +509,7 @@ public class GenericDMRTest {
         String verifiedSchema = "public";
         ResultSet rs = mock(ResultSet.class);
         ResultSetMetaData rsmd = mock (ResultSetMetaData.class);
+        ResultSet rsTypes = mock(ResultSet.class);
         dmr.verifiedSchema = verifiedSchema;
         
         when(dmd.getColumns(null, verifiedSchema, tableName, null)).thenReturn(rs);
@@ -509,6 +520,15 @@ public class GenericDMRTest {
         when(rsmd.getColumnName(anyInt())).thenReturn("metaTestCol1", "metaTestCol2");
         when(rs.getString(anyInt())).thenReturn("value1", "value2");
         when(rs.getString("COLUMN_NAME")).thenReturn("myTableId", "myTableData");
+        when(rs.getString("TYPE_NAME")).thenReturn("integer","char");
+        
+        //mock getting data types from db
+        when(dmd.getTypeInfo()).thenReturn(rsTypes);
+        when(rsTypes.isBeforeFirst()).thenReturn(Boolean.TRUE);
+        when(rsTypes.next()).thenReturn(true, true, false);
+        when(rsTypes.getString("TYPE_NAME")).thenReturn("integer","char");
+        when(rsTypes.getString("CREATE_PARAMS")).thenReturn(null,"length");
+        
         
         List result = dmr.getColumns(tableName);
         
@@ -684,6 +704,18 @@ public class GenericDMRTest {
     public void testGetCreateTableSQL() {
         System.out.println("getCreateTableSQL");
         
+        DataTypeDef dtd_int = new DataTypeDef();
+        DataTypeDef dtd_char = new DataTypeDef();
+        DataTypeDef dtd_ts = new DataTypeDef();
+        Map<String, DataTypeDef> dtds = new HashMap<>();
+        dtds.put("integer", dtd_int);
+        dtds.put("char", dtd_char);
+        dtds.put("timestamp", dtd_ts);  
+        dtd_char.create_params = "length";
+        //when(dtd_int.create_params).thenReturn(null);
+        //when(dtd_char.create_params).thenReturn("length");
+        //when(dtd_char.create_params).thenReturn(null);
+        
         //set-up using real objects
         ConfigSource realConfigSource = new ConfigSource();
         TableDef td = new TableDef();
@@ -694,14 +726,20 @@ public class GenericDMRTest {
         td.addColumn(cd);
         cd = new ColumnDef();
         cd.name = "Data";
-        cd.typeName = "varchar";
+        cd.typeName = "char";
         cd.size = 255;
         td.addColumn(cd);
         realConfigSource.addTable(td);
         realConfigSource.dbAttribs = new ArrayList<>();
         ChangeSourceFactory factory = new ChangeSourceFactory(realConfigSource);
+        factory.auditIdTypeName = "integer";
+        factory.auditUserTypeName = "char";
+        factory.auditActionTypeName = "char";
+        factory.auditTimeStampTypeName = "timestamp";
+
         List<DBChangeUnit> units = factory.getDBChangeList();
         dmr.verifiedSchema = "public";
+        dmr.dataTypes = dtds;
         dmr.readDBChangeList(units);
         
         

@@ -12,6 +12,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import javax.sql.DataSource;
+import liquibase.Liquibase;
+import liquibase.database.Database;
+import liquibase.database.DatabaseFactory;
+import liquibase.database.jvm.JdbcConnection;
+import liquibase.exception.LiquibaseException;
+import liquibase.resource.FileSystemResourceAccessor;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.junit.*;
@@ -181,14 +187,18 @@ public class AuditTableGenTest {
                 
     }
     
-        /**
+    /**
      * Test of updateAuditTables method, of class AuditTableGen.
+     * 
+     * This test is to make sure that if the config tables are
+     * found in the database, that the process proceeds.
      */
     @Test
     public void test2UpdateAuditTables() {
         System.out.println("updateAuditTables");
         
         DataSourceDMR dmr = mock(DataSourceDMR.class);
+        DataTypeDef dtd = new DataTypeDef();
         atg.dmr = dmr;
         atg.initialized = true;
         List<ConfigAttribute> attribs = new ArrayList<>();
@@ -197,11 +207,48 @@ public class AuditTableGenTest {
         when(dmr.hasAuditConfigTable()).thenReturn(true);
         when(dmr.getConfigAttributes()).thenReturn(attribs);
         when(dmr.getTables()).thenReturn(defs);
+        
+        //this will get it to pass verification of data types
+        when(dmr.getDataType(anyInt())).thenReturn(dtd);
 
         Boolean result = atg.updateAuditTables();
         verify(dmr, times(1)).readDBChangeList(anyList());
         assertEquals(true, result);
                 
+    }
+    
+    /**
+     * This is an example use case scenario
+     */
+    @Test
+    public void testUseCase(){
+        
+        //get a dataSource for setting  up the test dataBase
+        //the same dataSource will be used to run the application
+        DataSource myDataSource = HsqldbDMR.getRunTimeDataSource();
+
+        //set up the database using liquibase
+        try {
+
+            Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(myDataSource.getConnection()));
+            Liquibase liquibase = new Liquibase("src/test/resources/changesets/changeset-init-config.xml", new FileSystemResourceAccessor(), database);
+            liquibase.update(null);
+            
+            liquibase = new Liquibase("src/test/resources/changesets/changeset-sample-tables.xml", new FileSystemResourceAccessor(), database);
+            liquibase.update(null);
+            
+        } catch (SQLException e){
+            logger.error("error setting up unit tests", e);
+        } catch (LiquibaseException le){
+            logger.error("liquibase error", le);
+        }
+
+        //run the application
+        AuditTableGen atg = new AuditTableGen(myDataSource, "PUBLIC");
+        atg.updateAuditTables();
+        
+        //that's it.
+
     }
 
 }
