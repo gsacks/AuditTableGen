@@ -143,11 +143,19 @@ public class AuditTableGen {
         else {
             ConfigSource configSource = new ConfigSource();
 
+            //for now attributes come from the dmr only.
+            //they could be supplied by other means.
             configSource.addAttributes(dmr.getConfigAttributes());
+            
             configSource.addTables(dmr.getTables());
             configSource.setMaxUserNameLength(dmr.getMaxUserNameLength());
-            
+                     
             ChangeSourceFactory factory = new ChangeSourceFactory(configSource);
+            
+            //verify that data types for the audit columns
+            if (!factory.verifyAuditColumnDataTypes(dmr)){
+                return false;
+            }
             
             List<DBChangeUnit> unitList = factory.getDBChangeList();
             if (DBChangeUnit.validateUnitList(unitList)) {
@@ -163,6 +171,7 @@ public class AuditTableGen {
         return true;
         
     }
+    
     
     /**
      * Examines the DataSource metadata for information pertaining to the

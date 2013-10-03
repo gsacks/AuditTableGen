@@ -6,6 +6,7 @@ package net.certifi.audittablegen;
 
 import java.util.*;
 import org.apache.commons.collections.map.CaseInsensitiveMap;
+import org.apache.commons.lang3.exception.ContextedRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 //import org.apache.commons.collections.map.CaseInsensitiveMap;
@@ -25,6 +26,14 @@ public class ChangeSourceFactory {
     String tablePostfix = "";
     String columnPrefix = "zz_";
     String columnPostfix = "";
+    String auditIdTypeName = "";
+    Integer auditIdDefaultDataType = java.sql.Types.BIGINT;
+    String auditUserTypeName = "";
+    Integer auditUserDefaultDataType = java.sql.Types.CHAR;
+    String auditTimeStampTypeName = "";
+    Integer auditTimeStampDefaultDataType = java.sql.Types.TIMESTAMP;
+    String auditActionTypeName = "";
+    Integer auditActionDefaultDataType = java.sql.Types.CHAR;
     
     ChangeSourceFactory (ConfigSource configSource){
     
@@ -46,6 +55,17 @@ public class ChangeSourceFactory {
                 break;
             case columnpostfix:
                 columnPostfix = attrib.getValue();
+                break;
+            case iddatatype:
+                auditIdTypeName = attrib.getValue();
+            case userdatatype:      
+                auditUserTypeName = attrib.getValue();
+                break;
+            case timestampdatatype:
+                auditTimeStampTypeName = attrib.getValue();
+                break;
+            case actiondatatype:
+                auditActionTypeName = attrib.getValue();
                 break;
             default:
                 break;
@@ -157,8 +177,8 @@ public class ChangeSourceFactory {
     List<DBChangeUnit> getDBChangeList(TableDef baseTableDef){
         
         List<DBChangeUnit> tableChangeUnits = new ArrayList();
-        List<DBChangeUnit> tableRenameColumns = new ArrayList();
-        List<DBChangeUnit> partialChangeUnits = new ArrayList();
+        List<DBChangeUnit> renameColumnChangeUnits = new ArrayList();
+        List<DBChangeUnit> alterTableChangeUnits = new ArrayList();
         
         DBChangeUnit workUnit;
         String baseTableName = baseTableDef.getName();
@@ -171,7 +191,9 @@ public class ChangeSourceFactory {
         }
         
         if (baseTableDef.getColumns().isEmpty()){
-            logger.error("Invalid Input. TableDef has no columns.");
+            ContextedRuntimeException e = new ContextedRuntimeException();
+            e.setContextValue("tableName", baseTableDef.getName());
+            logger.error("Invalid Input. TableDef has no columns.", e);
             return tableChangeUnits;
         }
         
@@ -220,7 +242,7 @@ public class ChangeSourceFactory {
             workUnit = new DBChangeUnit(DBChangeType.addColumn);
             workUnit.setColumnName(auditTableName + "Id");
             workUnit.setTableName(auditTableName);
-            workUnit.setDataType("integer");
+            workUnit.setTypeName(auditIdTypeName);
             workUnit.setIdentity(Boolean.TRUE);
             tableChangeUnits.add(workUnit);
             
@@ -229,7 +251,7 @@ public class ChangeSourceFactory {
                 workUnit = new DBChangeUnit(DBChangeType.addColumn);
                 workUnit.setColumnName(baseColumn.getName());
                 workUnit.setTableName(auditTableName);
-                workUnit.setDataType(baseColumn.getType());
+                workUnit.setTypeName(baseColumn.getTypeName());
                 workUnit.setSize(baseColumn.getSize());
                 workUnit.setDecimalSize(baseColumn.getDecimalSize());
                 tableChangeUnits.add(workUnit);
@@ -240,7 +262,7 @@ public class ChangeSourceFactory {
             workUnit = new DBChangeUnit(DBChangeType.addColumn);
             workUnit.setColumnName(auditActionColumn);
             workUnit.setTableName(auditTableName);
-            workUnit.setDataType("char"); //insert, update, or delete
+            workUnit.setTypeName(auditActionTypeName); //insert, update, or delete
             workUnit.setSize(6);
             workUnit.setDecimalSize(0);
             tableChangeUnits.add(workUnit);
@@ -249,7 +271,7 @@ public class ChangeSourceFactory {
             workUnit = new DBChangeUnit(DBChangeType.addColumn);
             workUnit.setColumnName(auditUserColumn);
             workUnit.setTableName(auditTableName);
-            workUnit.setDataType("char");
+            workUnit.setTypeName(auditUserTypeName);
             workUnit.setSize(configSource.getMaxUserNameLength());
             workUnit.setDecimalSize(0);
             tableChangeUnits.add(workUnit);
@@ -258,7 +280,7 @@ public class ChangeSourceFactory {
             workUnit = new DBChangeUnit(DBChangeType.addColumn);
             workUnit.setColumnName(auditTimeStampColumn);
             workUnit.setTableName(auditTableName);
-            workUnit.setDataType("timestamp");
+            workUnit.setTypeName(auditTimeStampTypeName);
             workUnit.setSize(0);
             workUnit.setDecimalSize(0);
             tableChangeUnits.add(workUnit);
@@ -268,10 +290,12 @@ public class ChangeSourceFactory {
         }
         else {
             //alter table
-            tableChangeUnits.add(new DBChangeUnit(DBChangeType.begin));
+            //there might not be any changes, so store up any changes in 
+            //a temporary list, and evaluate.
+            alterTableChangeUnits.add(new DBChangeUnit(DBChangeType.begin));
             workUnit = new DBChangeUnit(DBChangeType.alterTable);
             workUnit.setTableName(auditTableName);
-            tableChangeUnits.add(workUnit);
+            alterTableChangeUnits.add(workUnit);
             
             //to make this a little easier, get a map for the column list
             Map<String, ColumnDef> auditColumnMap = new CaseInsensitiveMap();
@@ -283,38 +307,38 @@ public class ChangeSourceFactory {
             //create the audit tracking columns
             //action
             if (!auditColumnMap.containsKey(auditActionColumn)){
-                logger.error ("Existing audit table {} does not contain column {}. Creating", auditTableName, auditActionColumn );
+                logger.warn ("Existing audit table {} does not contain column {}. Creating", auditTableName, auditActionColumn );
                 workUnit = new DBChangeUnit(DBChangeType.addColumn);
                 workUnit.setColumnName(auditActionColumn);
                 workUnit.setTableName(auditTableName);
-                workUnit.setDataType("char"); //insert, update, or delete
+                workUnit.setTypeName(auditActionTypeName); //insert, update, or delete
                 workUnit.setSize(6);
                 workUnit.setDecimalSize(0);
-                tableChangeUnits.add(workUnit);
+                alterTableChangeUnits.add(workUnit);
             }
             
             //user
             if (!auditColumnMap.containsKey(auditUserColumn)){
-                logger.error ("Existing audit table {} does not contain column {}. Creating", auditTableName, auditUserColumn );
+                logger.warn ("Existing audit table {} does not contain column {}. Creating", auditTableName, auditUserColumn );
                 workUnit = new DBChangeUnit(DBChangeType.addColumn);
                 workUnit.setColumnName(auditUserColumn);
                 workUnit.setTableName(auditTableName);
-                workUnit.setDataType("char");
+                workUnit.setTypeName(auditUserTypeName);
                 workUnit.setSize(configSource.getMaxUserNameLength());
                 workUnit.setDecimalSize(0);
-                tableChangeUnits.add(workUnit);
+                alterTableChangeUnits.add(workUnit);
             }
             
             //timestamp
             if (!auditColumnMap.containsKey(auditTimeStampColumn)){            
-                logger.error ("Existing audit table {} does not contain column {}. Creating", auditTableName, auditTimeStampColumn );
+                logger.warn ("Existing audit table {} does not contain column {}. Creating", auditTableName, auditTimeStampColumn );
                 workUnit = new DBChangeUnit(DBChangeType.addColumn);
                 workUnit.setColumnName(auditTimeStampColumn);
                 workUnit.setTableName(auditTableName);
-                workUnit.setDataType("timestamp");
+                workUnit.setTypeName(auditTimeStampTypeName);
                 workUnit.setSize(0);
                 workUnit.setDecimalSize(0);
-                tableChangeUnits.add(workUnit);
+                alterTableChangeUnits.add(workUnit);
             }
             
             //add or alter columns
@@ -322,22 +346,22 @@ public class ChangeSourceFactory {
                 if (auditColumnMap.containsKey(baseColumn.name)){
                     //existing column
                     ColumnDef auditColumn = auditColumnMap.get(baseColumn.name);
-                    if (auditColumn.getType().equalsIgnoreCase(baseColumn.getType())
+                    if (auditColumn.getTypeName().equalsIgnoreCase(baseColumn.getTypeName())
                             && auditColumn.getSize() >= baseColumn.getSize()
                             && auditColumn.getDecimalSize() >= baseColumn.getDecimalSize()){
                         //nothing to do
                     }
-                    else if (auditColumn.getType().equalsIgnoreCase(baseColumn.getType())
+                    else if (auditColumn.getTypeName().equalsIgnoreCase(baseColumn.getTypeName())
                             && (auditColumn.getSize() < baseColumn.getSize()
                                 || auditColumn.getDecimalSize() < baseColumn.getDecimalSize()) ) {
                         //type is the same, but size increased
                         workUnit = new DBChangeUnit(DBChangeType.alterColumnSize);
                         workUnit.setTableName(auditTableName);
                         workUnit.setColumnName(baseColumn.getName());
-                        workUnit.setDataType(baseColumn.getType());
+                        workUnit.setTypeName(baseColumn.getTypeName());
                         workUnit.setSize(baseColumn.getSize());
                         workUnit.setDecimalSize(baseColumn.getDecimalSize());
-                        tableChangeUnits.add(workUnit);
+                        alterTableChangeUnits.add(workUnit);
                     }
                     else {
                         //type changes or size shrunk. Rename existing column
@@ -351,28 +375,28 @@ public class ChangeSourceFactory {
                             i++;
                         } while (auditColumnMap.containsKey(newColumnName));
                         //rename the old version of the audit column
-                        tableRenameColumns.add((new DBChangeUnit(DBChangeType.begin)));
+                        renameColumnChangeUnits.add((new DBChangeUnit(DBChangeType.begin)));
                         workUnit = new DBChangeUnit(DBChangeType.alterTable);
                         workUnit.setTableName(auditTableName);
-                        tableRenameColumns.add(workUnit);
+                        renameColumnChangeUnits.add(workUnit);
                         workUnit = new DBChangeUnit(DBChangeType.alterColumnName);
                         workUnit.setTableName(auditTableName);
                         workUnit.setColumnName(auditColumn.getName());
                         workUnit.setNewColumnName(newColumnName);
-                        workUnit.setDataType(auditColumn.getType());
+                        workUnit.setTypeName(auditColumn.getTypeName());
                         workUnit.setSize(auditColumn.getSize());
                         workUnit.setDecimalSize(auditColumn.getDecimalSize());
-                        tableRenameColumns.add(workUnit);
-                        tableRenameColumns.add((new DBChangeUnit(DBChangeType.end)));
+                        renameColumnChangeUnits.add(workUnit);
+                        renameColumnChangeUnits.add((new DBChangeUnit(DBChangeType.end)));
                         
                         //now add the new version of the column
                         workUnit = new DBChangeUnit(DBChangeType.addColumn);
                         workUnit.setTableName(auditTableName);
                         workUnit.setColumnName(baseColumn.getName());
-                        workUnit.setDataType(baseColumn.getType());
+                        workUnit.setTypeName(baseColumn.getTypeName());
                         workUnit.setSize(baseColumn.getSize());
                         workUnit.setDecimalSize(baseColumn.getDecimalSize());
-                        tableChangeUnits.add(workUnit);         
+                        alterTableChangeUnits.add(workUnit);         
                     }                        
                 }
                 else {
@@ -380,15 +404,25 @@ public class ChangeSourceFactory {
                     workUnit = new DBChangeUnit(DBChangeType.addColumn);
                     workUnit.setTableName(auditTableName);
                     workUnit.setColumnName(baseColumn.getName());
-                    workUnit.setDataType(baseColumn.getType());
+                    workUnit.setTypeName(baseColumn.getTypeName());
                     workUnit.setSize(baseColumn.getSize());
                     workUnit.setDecimalSize(baseColumn.getDecimalSize());
-                    tableChangeUnits.add(workUnit);
+                    alterTableChangeUnits.add(workUnit);
                 }
             }
             
             //end of table
-            tableChangeUnits.add(new DBChangeUnit(DBChangeType.end));
+            alterTableChangeUnits.add(new DBChangeUnit(DBChangeType.end));
+            
+            //add the workUnits to the return value
+            if (!renameColumnChangeUnits.isEmpty()){
+                tableChangeUnits.addAll(renameColumnChangeUnits);
+            }
+            
+            if (alterTableChangeUnits.size() > 3 ){
+                tableChangeUnits.addAll(alterTableChangeUnits);
+            }
+            
         }
         
         //begin trigger changes
@@ -458,14 +492,7 @@ public class ChangeSourceFactory {
         //end trigger changes
         tableChangeUnits.add(new DBChangeUnit(DBChangeType.end));
         
-        if ( tableRenameColumns.isEmpty()){
-            return tableChangeUnits;
-        }
-        else {
-            //put column rename(s) at the front of the list
-            tableRenameColumns.addAll(tableChangeUnits);
-            return tableRenameColumns;
-        }
+        return tableChangeUnits;
         
     }
     
@@ -492,196 +519,101 @@ public class ChangeSourceFactory {
             return new ArrayList<DBChangeUnit>();
         }
     }
-    
-//     void applyAttribute(ConfigAttribute attrib){
-//
-//        //TODO handle regexp or wildcards resolve all excludes 1st
-//        //then resolve includes, all in one step before processing
-//        //tables
-//        
-//        switch (attrib.getType()) {
-//            case exclude:
-//
-//                if (attrib.getTableName().isEmpty()){
-//                    //do not currently handle exclude of column
-//                    //names only
-//                }
-//                else {
-//                    if (attrib.getColumnName().isEmpty()){
-//                        //exclude table
-//                        getTableConfig(attrib.getTableName()).setExcludeTable(Boolean.FALSE);
-//                    }
-//                    else {
-//                        //exclude specific column
-//                        getTableConfig(attrib.getTableName()).addExcludedColumn(attrib.getColumnName());
-//                    }
-//                }
-//                break;
-//            case include:
-//                if (attrib.getColumnName().isEmpty()){
-//                    //attribute applies to entire table
-//                    
-//                }
-//                
-//                
-//                if (attrib.getTableName().isEmpty()){
-//                    Iterator iter = existingAuditTables.entrySet().iterator();
-//                    //do not currently handle include of column
-//                    //names only
-//                }
-//                else {
-//                    if (attrib.getColumnName().isEmpty()){
-//                        //include table (this is default)
-//                        getTableConfig(attrib.getTableName()).setExcludeTable(Boolean.FALSE);
-//                    }
-//                    else {
-//                        //include specific column (this is default)
-//                        getTableConfig(attrib.getTableName()).addIncludedColumn(attrib.getColumnName());
-//                    }
-//                }
-//                break;
-//           
-//            case auditinsert:
-//                if (existingTables.containsKey(attrib.tableName)){
-//                    getTableConfig(attrib.getTableName()).setHasInsertTrigger(attrib.getBooleanValue());
-//                }                
-//                break;
-//            case auditupdate:
-//                if (existingTables.containsKey(attrib.tableName)){
-//                    getTableConfig(attrib.getTableName()).setHasUpdateTrigger(attrib.getBooleanValue());
-//                }
-//                break;
-//            case auditdelete:
-//                if (existingTables.containsKey(attrib.tableName)){
-//                    getTableConfig(attrib.getTableName()).setHasDeleteTrigger(attrib.getBooleanValue());
-//                }
-//                break;
-//            case unknown:
-//                break;
-//        }
-//    }
-     
-    
-//    TableChangeSource getAuditTableChangeSource(String baseTableName){
-//
-//        String auditTableName = configSource.tablePrefix
-//                    + baseTableName
-//                    + configSource.tablePostfix;
-//        
-//        TableConfig sourceTable = configSource.getTableConfig(baseTableName);
-//        if (sourceTable == null){
-//            //table does not exist
-//            return null;
-//        }
-//
-//        TableConfig auditTable = null;
-//        Boolean isNewTable = true;
-//        if (configSource.hasExistingAuditTable(auditTableName)){
-//            auditTable = configSource.getExistingAuditTable(auditTableName);
-//            isNewTable = false;
-//            
-//        }
-//        
-//        //if the entire table is excluded, it might be better to return null
-//        //but for now return an object with the excluded property set, and
-//        //let the consuming object decide if it needs to do anything or not.
-//        TableChangeSource ts = new TableChangeSource(isNewTable, auditTableName, sourceTable.getExcludeTable());
-//
-//        //Map sourceColumns = sourceTable.getColumns();
-//        for (Map.Entry<String, Map<String, String>> entry : sourceTable.getColumns().entrySet()) {
-//            //not looking at excluded/included because all columns are included in the audit table
-//            //exclude/include only applies to the trigger
-//            String columnName = (entry.getValue().get("COLUMN_NAME"));
-//            String columnType = (entry.getValue().get("TYPE_NAME"));
-//            String columnSizeStr = (entry.getValue().get("COLUMN_SIZE"));
-//            int columnSize;
-//            try {
-//                columnSize = Integer.parseInt(columnSizeStr);
-//            } catch (NumberFormatException e) {
-//                columnSize = 0;
-//            }
-//            String decimalSizeStr = (entry.getValue().get("DECIMAL_SIZE"));
-//            int decimalSize;
-//            try {
-//                decimalSize = Integer.parseInt(decimalSizeStr);
-//            } catch (NumberFormatException e) {
-//                decimalSize = 0;
-//            }
-//            
-//            ColumnChangeSource ccs;
-//            if (isNewTable) {
-//                //new table, new column
-//                ccs = new ColumnChangeSource(columnName, columnType, columnSize, decimalSize, entry.getValue());
-//            } else if (!auditTable.getColumns().containsKey(columnName)) {
-//                //old table, new column
-//                ccs = new ColumnChangeSource(columnName, columnType, columnSize, decimalSize, entry.getValue());
-//            } else {
-//                //old table, existing column
-//                Map<String, String> auditColumn = auditTable.getColumns().get(columnName);
-//                String oldColumnType = auditColumn.get("TYPE_NAME");
-//                String oldColumnSizeStr = auditColumn.get("COLUMN_SIZE");
-//                int oldColumnSize;
-//                try {
-//                    oldColumnSize = Integer.parseInt(oldColumnSizeStr);
-//                } catch (NumberFormatException e) {
-//                    oldColumnSize = 0;
-//                }
-//                String oldDecimalSizeStr = auditColumn.get("DECIMAL_SIZE");
-//                int oldDecimalSize;
-//                try {
-//                    oldDecimalSize = Integer.parseInt(oldDecimalSizeStr);
-//                } catch (NumberFormatException e) {
-//                    oldDecimalSize = 0;
-//                }
-//                
-//                ccs = new ColumnChangeSource(columnName, columnType, oldColumnType,
-//                        columnSize, oldColumnSize, decimalSize, oldDecimalSize,
-//                        entry.getValue(), auditColumn);
-//
-//            }            
-//            ts.addColumn(ccs);
-//            
-//        }
-//
-//        return ts;
-//    }
-            
-//    TriggerChangeSource getAuditTriggerChangeSource (String baseTableName){
-//        
-//        String auditTableName = configSource.tablePrefix
-//                    + baseTableName
-//                    + configSource.tablePostfix;
-//        
-//        TriggerChangeSource triggerChangeSource = new TriggerChangeSource(baseTableName, auditTableName);
-//        
-//        TableConfig tc = configSource.getTableConfig(baseTableName);
-//        
-//        for (Map.Entry<String, Map<String, String>> entry : tc.getColumns().entrySet() ){
-//            
-//            //ToDo: make this search look for regexp
-//            //ToDo: make this case insensitive
-//            String columnName = entry.getValue().get("COLUMN_NAME");
-//            String auditColumnName = configSource.columnPrefix
-//                    + columnName
-//                    + configSource.columnPostfix;
-//            TriggerColumnChangeSource tccs;
-//            if (!tc.excludedColumns.containsKey(columnName)
-//                || tc.includedColumns.containsKey(columnName) ){
-//                //include column in firing trigger
-//                tccs = new TriggerColumnChangeSource(columnName, auditColumnName, true);
-//            }
-//            else {
-//                //exclude column from firing trigger
-//                tccs = new TriggerColumnChangeSource(columnName, auditColumnName, false);
-//            }
-//            triggerChangeSource.addColumn(tccs);
-//            
-//        }
-//        
-//        return triggerChangeSource;
-//        
-//    }    
+
+    /**
+     * Verify that the data types defined either by attribute or default
+     * values are known to the DataSourceDMR dmr.  If the data types are not
+     * set by attribute in the ConfigSource then the default java.sql.Types are
+     * used, and the string values for the type names that correspond to those
+     * default types are set in the respective fields.
+     * 
+     * @param dmr
+     * @return True if all of the data types are found.  False if any of
+     * them are not.
+     */
+    boolean verifyAuditColumnDataTypes(DataSourceDMR dmr) {
+
+        boolean result = true;
+        DataTypeDef dataTypeDef;
+        
+        //id column
+        if (!auditIdTypeName.isEmpty()){
+            dataTypeDef = dmr.getDataType(auditIdTypeName);
+            if (dataTypeDef == null){
+                logger.error("Configuration error.  Data type [{}] for audit id column is not valid", auditIdTypeName);
+                result = false;
+            }
+        }
+        else {
+            dataTypeDef = dmr.getDataType(auditIdDefaultDataType);
+            if (dataTypeDef == null){
+                logger.error("Configuration error.  default data type [{}] for audit id column is not valid", auditIdDefaultDataType);
+                result = false;
+            }
+            else {
+                auditIdTypeName = dataTypeDef.type_name;
+            }
+        }
+        
+        //user column
+        if (!auditUserTypeName.isEmpty()){
+            dataTypeDef = dmr.getDataType(auditUserTypeName);
+            if (dataTypeDef == null){
+                logger.error("Configuration error.  Data type [{}] for audit user column is not valid", auditUserTypeName);
+                result = false;
+            }
+        }
+        else {
+            dataTypeDef = dmr.getDataType(auditUserDefaultDataType);
+            if (dataTypeDef == null){
+                logger.error("Configuration error.  default data type [{}] for audit user column is not valid", auditUserDefaultDataType);
+                result = false;
+            }
+            else {
+                auditUserTypeName = dataTypeDef.type_name;
+            }
+        }
+        
+        //action column
+        if (!auditActionTypeName.isEmpty()){
+            dataTypeDef = dmr.getDataType(auditActionTypeName);
+            if (dataTypeDef == null){
+                logger.error("Configuration error.  Data type [{}] for audit action column is not valid", auditActionTypeName);
+                result = false;
+            }
+        }
+        else {
+            dataTypeDef = dmr.getDataType(auditActionDefaultDataType);
+            if (dataTypeDef == null){
+                logger.error("Configuration error.  default data type [{}] for audit action column is not valid", auditActionDefaultDataType);
+                result = false;
+            }
+            else {
+                auditActionTypeName = dataTypeDef.type_name;
+            }
+        }
+        
+        //timestamp column
+        if (!auditTimeStampTypeName.isEmpty()){
+            dataTypeDef = dmr.getDataType(auditTimeStampTypeName);
+            if (dataTypeDef == null){
+                logger.error("Configuration error.  Data type [{}] for audit timestamp column is not valid", auditTimeStampTypeName);
+                result = false;
+            }
+        }
+        else {
+            dataTypeDef = dmr.getDataType(auditTimeStampDefaultDataType);
+            if (dataTypeDef == null){
+                logger.error("Configuration error.  default data type [{}] for audit timestamp column is not valid", auditTimeStampDefaultDataType);
+                result = false;
+            }
+            else {
+                auditTimeStampTypeName = dataTypeDef.type_name;
+            }
+        }
       
+        return result;
+    }
     
 }
 

@@ -29,6 +29,7 @@ public class ConfigSource {
     List<ConfigAttribute> otherAttributes; //these are of unknown type
     //IdentifierMetaData idMetaData;
     int maxUserNameLength;
+
     
     ConfigSource(){
         //this.idMetaData = idMetaData;
@@ -68,6 +69,18 @@ public class ConfigSource {
             case columnpostfix:
                 dbAttribs.add(attrib);
                 break;
+            case iddatatype:
+                dbAttribs.add(attrib);
+                break;                
+            case userdatatype:
+                dbAttribs.add(attrib);
+                break;
+            case actiondatatype:
+                dbAttribs.add(attrib);
+                break;
+            case timestampdatatype:
+                dbAttribs.add(attrib);
+                break;
             case auditinsert:
             case auditupdate:
             case auditdelete:
@@ -100,207 +113,3 @@ public class ConfigSource {
     
     
 }
-    
-    /**
-     * Get a List of tables from the Tables map whose keys match the
-     * supplied pattern.  The objects in the List are the same objects
-     * in the map, and changes to the List are reflected in the Map.  Add
-     * or remove from the List has no effect on the Map.
-     * 
-     * ONLY EXACT MATCHES ARE CURRENTLY SUPPORTED, EXCEPT EMPTY STRING OR '*'
-     * MATCHES ALL TABLES.
-     * 
-     * @param tablePattern table name pattern to match on
-     * @return List of TableConfig objects matching the pattern 
-     */
-//    List getTableMatches(String tablePattern){
-//        
-//        List<TableConfig> matched = new ArrayList<>();
-//        
-//        Iterator<Entry<String, TableConfig>> iter  = existingAuditTables.entrySet().iterator();
-//        while (iter.hasNext()) {
-//            TableConfig tc = iter.next().getValue();
-//            
-//            if (tablePattern.isEmpty()
-//                    || tablePattern.equals("*")
-//                    || tablePattern.equalsIgnoreCase(tc.tableName)){
-//                matched.add(tc);
-//            }
-//        }
-//        
-//        return matched;
-//        
-//    }
-    
-    /**
-     * Get a List of columns from the Tables map whose keys match the
-     * supplied pattern.  The objects in the List are the same objects
-     * in the map, and changes to the List are reflected in the Map.  Add
-     * or remove from the List has no effect on the Map.
-     * 
-     * ONLY EXACT MATCHES ARE CURRENTLY SUPPORTED, EXCEPT EMPTY STRING OR '*'
-     * MATCHES ALL TABLES.
-     * 
-     * @param tablePattern table name pattern to match on
-     * @return List of TableConfig objects matching the pattern 
-     */
-    
-//    List getColumnMatches(Map<String, Str> c, String columnPattern){
-//        
-//        List<TableConfig> matched = new ArrayList<>();
-//        
-//        Iterator<Entry<String, TableConfig>> iter  = existingAuditTables.entrySet().iterator();
-//        while (iter.hasNext()) {
-//            TableConfig tc = iter.next().getValue();
-//            
-//            if (tablePattern.isEmpty()
-//                    || tablePattern.equals("*")
-//                    || tablePattern.equalsIgnoreCase(tc.tableName)){
-//                matched.add(tc);
-//            }
-//        }
-//        
-//        return matched;
-//        
-//    }
-    
-//    void addExistingAuditTable (String auditTableName){
-//        
-//        if (!existingAuditTables.containsKey(auditTableName)){
-//            TableConfig atc = new TableConfig(auditTableName);
-//            existingAuditTables.put (auditTableName, atc);
-//        }
-//
-//    }
-    
-//    Boolean hasExistingAuditTable (String auditTableName){
-//        
-//        return existingAuditTables.containsKey(auditTableName);
-//    }
-    
-    /**
-     * Add table to the map of database tables.  Note that the table
-     * name is stored in the TableConfig object case sensitive, but the
-     * map key is case insensitive.  If the table already exists, it will
-     * not be replaced.
-     * 
-     * @param tableName 
-     */
-//    void addTableConfig (String tableName){
-//        
-//        if(!existingTables.containsKey(tableName)){
-//            TableConfig tc = new TableConfig(tableName);
-//            existingTables.put(tableName, tc);
-//        }
-//    }
-    
-    
-    /**
-     * A proxy for addTableConfig
-     * 
-     * @param tableName 
-     */
-//    void ensureTableConfig (String tableName){
-//        addTableConfig(tableName);
-//    }
-    
-    /**
-     * Finds the table in the existing table map and sets the exclude
-     * property.
-     * 
-     * @param tableName The name of the table to exclude from having an audit
-     * table created for it.
-     */
-//    void addExcludedTable (String tableName){
-//         TableConfig tc;
-//         ensureTableConfig(tableName);
-//         tc = this.getTableConfig(tableName);
-//         tc.setExcludeTable(Boolean.TRUE);
-//    }
-    /**
-     * Finds the table in the existing table map and adds the column
-     * to the list of columns to be excluded from triggering an update
-     * to the audit table.  Note that the case sensitive table and column
-     * name are stored, but the key lookup is case insensitive.
-     * 
-     * @param tableName The name of the table containing the column
-     * @param columnName The column name.
-     */
-//    void addExcludedColumn (String tableName, String columnName){
-//    
-//        TableConfig tc;
-//        
-//        ensureTableConfig(tableName);
-//        tc = this.getTableConfig(tableName);
-//        tc.addExcludedColumn(columnName);
-//        
-//    }
-    
-    /**
-     * Finds the table in the existing table map and adds the column
-     * to the list of columns to be included to trigger an update
-     * to the audit table.  Note that the case sensitive table and column
-     * name are stored, but the key lookup is case insensitive.  The default
-     * is for all columns to trigger an update.  The include list is intended
-     * to act as an override for regexp matches in the set-up which may be
-     * overly broad.
-     * 
-     * @param tableName The name of the table containing the column
-     * @param columnName The column name.
-     */
-//    void addIncludedColumn (String tableName, String columnName){
-//    
-//        TableConfig tc;
-//
-//        ensureTableConfig(tableName);
-//        tc = this.getTableConfig(tableName);
-//        tc.addIncludedColumn(columnName);
-//        
-//    }
-
-//    TableConfig getTableConfig (String tableName){
-//        
-//        return existingTables.get(tableName);
-//    }
-//    
-//    String getTablePostfix() {
-//        return tablePostfix;
-//    }
-//
-//    void setTablePostfix(String tablePostfix) {
-//        this.tablePostfix = tablePostfix;
-//    }
-//
-//    String getTablePrefix() {
-//        return tablePrefix;
-//    }
-//
-//    void setTablePrefix(String tablePrefix) {
-//        this.tablePrefix = tablePrefix;
-//    }
-//
-//    String getColumnPostfix() {
-//        return columnPostfix;
-//    }
-//
-//    //not supported - can wreak havok with table ids
-//    void setColumnPostfix(String columnPostfix) {
-//        this.columnPostfix = "";
-//        //this.columnPostfix = columnPostfix;
-//    }
-//
-//    String getColumnPrefix() {
-//        return columnPrefix;
-//    }
-//
-//    //not supported - can wreak havoc with table ids
-//    void setColumnPrefix(String columnPrefix) {
-//        this.columnPrefix = "";
-//        //this.columnPrefix = columnPrefix;
-//    }
-//
-//    TableConfig getExistingAuditTable(String key) {
-//        return existingAuditTables.get(key);
-//    }
-//    
-//}

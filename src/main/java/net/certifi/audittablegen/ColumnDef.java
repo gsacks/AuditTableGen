@@ -13,9 +13,11 @@ import java.util.Map;
 public class ColumnDef {
     
     String name;
-    String type;
-    int size; //for postres char size and numeric size
-    int decimalSize; //for numeric and decimal
+    String typeName; //database specific type name
+    int sqlType; //java.sql.Types dataType
+    int size; //field size 
+    int decimalSize; //field precision
+    DataTypeDef dataTypeDef;
     
     //the map contains all of the meta data.  It does not need to 
     //be set.  But if a DMR requires more information it can store
@@ -55,13 +57,28 @@ public class ColumnDef {
         this.sourceMeta = sourceMeta;
     }
 
-    public String getType() {
-        return type;
+    public String getTypeName() {
+        return typeName;
     }
 
-    public void setType(String type) {
-        this.type = type;
+    public void setTypeName(String type) {
+        this.typeName = type;
     }
 
-    
+    public int getSqlType() {
+        return sqlType;
+    }
+
+    public void setSqlType(int sqlType) {
+        this.sqlType = sqlType;
+    }
+
+    public DataTypeDef getDataTypeDef() {
+        return dataTypeDef;
+    }
+
+    public void setDataTypeDef(DataTypeDef dataTypeDef) {
+        this.dataTypeDef = dataTypeDef;
+    }
+
 }

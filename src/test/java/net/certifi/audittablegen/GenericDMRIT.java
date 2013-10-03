@@ -6,6 +6,7 @@ package net.certifi.audittablegen;
 
 import java.sql.*;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import javax.sql.DataSource;
@@ -113,6 +114,26 @@ public class GenericDMRIT {
         dmr.verifiedAuditConfigTable = null;
         result = dmr.hasAuditConfigTable();
         assertFalse(result);
+    }
+    
+    /**
+     * Test of getColumns method, of class GenericDMR.
+     */
+    @Test
+    public void testGetColumns() throws SQLException {
+        System.out.println("getColumns");
+
+        String tableName = "auditconfigattribute";
+        String verifiedSchema = "PUBLIC";
+
+        dmr.verifiedSchema = verifiedSchema;
+                
+        List result = dmr.getColumns(tableName);
+        
+
+
+        assertEquals(9, result.size());
+
     }
 
 

@@ -4,6 +4,7 @@
  */
 package net.certifi.audittablegen;
 
+import java.sql.SQLException;
 import java.util.List;
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -136,11 +137,11 @@ public class ChangeSourceFactoryTest {
         td.name = "Table1";
         ColumnDef cd = new ColumnDef();
         cd.name = "Table1Id";
-        cd.type = "integer";
+        cd.typeName = "integer";
         td.addColumn(cd);
         cd = new ColumnDef();
         cd.name = "Data";
-        cd.type = "varchar";
+        cd.typeName = "varchar";
         cd.size = 255;
         td.addColumn(cd);
         configSource.addTable(td);
@@ -151,17 +152,17 @@ public class ChangeSourceFactoryTest {
         List<DBChangeUnit> result = instance.getDBChangeList(td);
         for ( DBChangeUnit unit : result){
             //these are the real test results...
-            System.out.println(unit.toString());
+            logger.info(unit.toString());
         }
         assertNotNull(result);
 
     }
-
+   
     /**
      * Test of getDBChangeList method, of class ChangeSourceFactory.
      */
     @Test
-    public void testGetDBChangeList_0args() {
+    public void testGetDBChangeList_0args_testChanges() {
         System.out.println("getDBChangeList");
 
         //set-up using real objects
@@ -169,20 +170,56 @@ public class ChangeSourceFactoryTest {
         td.name = "Table1";
         ColumnDef cd = new ColumnDef();
         cd.name = "Table1Id";
-        cd.type = "integer";
+        cd.typeName = "integer";
         td.addColumn(cd);
         cd = new ColumnDef();
         cd.name = "Data";
-        cd.type = "varchar";
+        cd.typeName = "varchar";
         cd.size = 255;
         td.addColumn(cd);
         configSource.addTable(td);
+        
+        td = new TableDef();
+        td.name = "zz_Table1";
+        //zz_id
+        cd = new ColumnDef();
+        cd.name = "zz_Table1Id";
+        cd.typeName = "integer";
+        td.addColumn(cd);
+        //zz_user
+        cd = new ColumnDef();
+        cd.name = "zz_userId";
+        cd.typeName = "char";
+        td.addColumn(cd);
+        //zz_timestamp
+        cd = new ColumnDef();
+        cd.name = "zz_ts";
+        cd.typeName = "timestamp";
+        td.addColumn(cd);
+        //zz_action
+        cd = new ColumnDef();
+        cd.name = "zz_action";
+        cd.typeName = "char";
+        td.addColumn(cd);
+        
+        cd = new ColumnDef();
+        cd.name = "Table1Id";
+        cd.typeName = "integer";
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "Data";
+        cd.typeName = "char";
+        cd.size = 255;
+        td.addColumn(cd);
+        configSource.addTable(td);
+        
 
         ChangeSourceFactory instance = new ChangeSourceFactory(configSource);
         List<DBChangeUnit> result = instance.getDBChangeList();
+        logger.info ("\n{}",DBChangeUnit.ListToString(result));
         for ( DBChangeUnit unit : result){
             //these are the real test results...
-            System.out.println(unit.toString());
+            //logger.info(unit.toString());
         }
         assertNotNull(result);
     }
@@ -200,11 +237,11 @@ public class ChangeSourceFactoryTest {
         td.name = "Table1";
         ColumnDef cd = new ColumnDef();
         cd.name = "Table1Id";
-        cd.type = "integer";
+        cd.typeName = "integer";
         td.addColumn(cd);
         cd = new ColumnDef();
         cd.name = "Data";
-        cd.type = "varchar";
+        cd.typeName = "varchar";
         cd.size = 255;
         td.addColumn(cd);
         configSource.addTable(td);
@@ -213,12 +250,26 @@ public class ChangeSourceFactoryTest {
         List<DBChangeUnit> result = instance.getDBChangeList("Table1");
         for ( DBChangeUnit unit : result){
             //these are the real test results...
-            System.out.println(unit.toString());
+            logger.info(unit.toString());
         }
         assertNotNull(result);
         assertTrue (result.size() > 0 );
         //this is fragile.  result size might change...
         //assertEquals(14, result.size());
         
+    }
+
+    /**
+     * Test of verifyAuditColumnDataTypes method, of class ChangeSourceFactory.
+     */
+    @Test
+    public void testVerifyAuditColumnDataTypes() throws SQLException {
+        System.out.println("verifyAuditColumnDataTypes");
+        DataSourceDMR dmr = new HsqldbDMR(HsqldbDMR.getRunTimeDataSource());
+        ChangeSourceFactory instance = new ChangeSourceFactory(configSource);
+        boolean expResult = true;
+        boolean result = instance.verifyAuditColumnDataTypes(dmr);
+        assertEquals(expResult, result);
+
     }
 }

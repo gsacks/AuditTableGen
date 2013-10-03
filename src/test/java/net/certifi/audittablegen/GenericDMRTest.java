@@ -539,11 +539,11 @@ public class GenericDMRTest {
         td.name = "Table1";
         ColumnDef cd = new ColumnDef();
         cd.name = "Table1Id";
-        cd.type = "integer";
+        cd.typeName = "integer";
         td.addColumn(cd);
         cd = new ColumnDef();
         cd.name = "Data";
-        cd.type = "varchar";
+        cd.typeName = "varchar";
         cd.size = 255;
         td.addColumn(cd);
         realConfigSource.addTable(td);
@@ -577,7 +577,7 @@ public class GenericDMRTest {
         unit = new DBChangeUnit(DBChangeType.addColumn);
         unit.setTableName(tableName);
         unit.setColumnName(column1Name);
-        unit.setDataType("varchar");
+        unit.setTypeName("varchar");
         unit.setSize(255);
         op.add(unit);
         op.add(new DBChangeUnit(DBChangeType.end));
@@ -622,7 +622,7 @@ public class GenericDMRTest {
         unit = new DBChangeUnit(DBChangeType.addColumn);
         unit.setTableName(tableName);
         unit.setColumnName(column1Name);
-        unit.setDataType("varchar");
+        unit.setTypeName("varchar");
         unit.setSize(255);
         op.add(unit);
         op.add(new DBChangeUnit(DBChangeType.end));
@@ -690,11 +690,11 @@ public class GenericDMRTest {
         td.name = "Table1";
         ColumnDef cd = new ColumnDef();
         cd.name = "Table1Id";
-        cd.type = "integer";
+        cd.typeName = "integer";
         td.addColumn(cd);
         cd = new ColumnDef();
         cd.name = "Data";
-        cd.type = "varchar";
+        cd.typeName = "varchar";
         cd.size = 255;
         td.addColumn(cd);
         realConfigSource.addTable(td);
@@ -729,16 +729,16 @@ public class GenericDMRTest {
         td.name = "Table1";
         ColumnDef cd = new ColumnDef();
         cd.name = "Table1Id";
-        cd.type = "integer";
+        cd.typeName = "integer";
         td.addColumn(cd);
         cd = new ColumnDef();
         cd.name = "Data";
-        cd.type = "varchar";
+        cd.typeName = "varchar";
         cd.size = 255;
         td.addColumn(cd);
         cd = new ColumnDef();
         cd.name = "NewData";
-        cd.type = "varchar";
+        cd.typeName = "varchar";
         cd.size = 255;
         td.addColumn(cd);
         realConfigSource.addTable(td);
@@ -748,15 +748,15 @@ public class GenericDMRTest {
         td.name = "zz_Table1";
         cd = new ColumnDef();
         cd.name = "zz_Table1Id";
-        cd.type = "integer";
+        cd.typeName = "integer";
         td.addColumn(cd);
         cd = new ColumnDef();
         cd.name = "Table1Id";
-        cd.type = "integer";
+        cd.typeName = "integer";
         td.addColumn(cd);
         cd = new ColumnDef();
         cd.name = "Data";
-        cd.type = "varchar";
+        cd.typeName = "varchar";
         cd.size = 255;
         td.addColumn(cd);
         realConfigSource.addTable(td);
@@ -791,16 +791,16 @@ public class GenericDMRTest {
         td.name = "Table1";
         ColumnDef cd = new ColumnDef();
         cd.name = "Table1Id";
-        cd.type = "integer";
+        cd.typeName = "integer";
         td.addColumn(cd);
         cd = new ColumnDef();
         cd.name = "Data";
-        cd.type = "varchar";
+        cd.typeName = "varchar";
         cd.size = 255;
         td.addColumn(cd);
         cd = new ColumnDef();
         cd.name = "DataExclude";
-        cd.type = "varchar";
+        cd.typeName = "varchar";
         cd.size = 255;
         td.addColumn(cd);
         realConfigSource.addTable(td);
@@ -837,16 +837,16 @@ public class GenericDMRTest {
         td.name = "Table1";
         ColumnDef cd = new ColumnDef();
         cd.name = "Table1Id";
-        cd.type = "integer";
+        cd.typeName = "integer";
         td.addColumn(cd);
         cd = new ColumnDef();
         cd.name = "Data";
-        cd.type = "varchar";
+        cd.typeName = "varchar";
         cd.size = 255;
         td.addColumn(cd);
         cd = new ColumnDef();
         cd.name = "DataExclude";
-        cd.type = "varchar";
+        cd.typeName = "varchar";
         cd.size = 255;
         td.addColumn(cd);
         realConfigSource.addTable(td);
@@ -892,6 +892,26 @@ public class GenericDMRTest {
         instance.executeUpdate(query);
 
     }
+
+    /**
+     * Test of getDataTypes method, of class GenericDMR.
+     */
+    @Test
+    public void testGetDataTypes() throws SQLException {
+        System.out.println("getDataTypes");
+        DataSource realDs = HsqldbDMR.getRunTimeDataSource();
+        GenericDMR instance = new GenericDMR(realDs);
+        Map<String, DataTypeDef> result = instance.getDataTypes();
+        
+        for ( DataTypeDef dtd : result.values()){
+            logger.info("{}", dtd.toString());
+        }
+                
+        assertNotNull( result);
+        assertTrue(result.size() > 1);
+
+    }
+
     
     
 }

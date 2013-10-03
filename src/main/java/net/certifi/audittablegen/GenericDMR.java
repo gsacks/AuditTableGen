@@ -38,6 +38,7 @@ class GenericDMR implements DataSourceDMR {
     String verifiedAuditConfigTable;
     String lastSQL; //adding this for testing
     Queue<List<DBChangeUnit>> operations = new ArrayDeque<>();
+    Map<String, DataTypeDef> dataTypes = null;
     //IdentifierMetaData idMetaData;
    
     
@@ -286,6 +287,9 @@ class GenericDMR implements DataSourceDMR {
     @Override
     public List getColumns (String tableName){
         
+        //getDataTypes will initialize the map if it isn't already loaded
+        Map<String, DataTypeDef> dtds = getDataTypes();
+        
         List columns = new ArrayList<>();
         
         try {
@@ -307,14 +311,18 @@ class GenericDMR implements DataSourceDMR {
                     columnMetaData.put(rsmd.getColumnName(i), rs.getString(i));
                 }
                 columnDef.setName(rs.getString("COLUMN_NAME"));
-                columnDef.setType(rs.getString("TYPE_NAME"));
-                if (true){
-                    //only set size for types that require it
-                    columnDef.setSize(rs.getInt("COLUMN_SIZE"));
-                }
+                columnDef.setTypeName(rs.getString("TYPE_NAME"));
+                columnDef.setSqlType(rs.getInt("DATA_TYPE"));
+                columnDef.setSize(rs.getInt("COLUMN_SIZE"));
                 columnDef.setDecimalSize(rs.getInt("DECIMAL_DIGITS"));
                 columnDef.setSourceMeta(columnMetaData);
                 
+                if (dtds.containsKey(columnDef.getTypeName())){
+                    columnDef.setDataTypeDef(dtds.get(columnDef.getTypeName()));
+                }
+                else {
+                    throw new RuntimeException("Missing DATA_TYPE definition for data type " + columnDef.getTypeName());
+                }
                 columns.add(columnDef);
             }
             
@@ -327,6 +335,67 @@ class GenericDMR implements DataSourceDMR {
         
     }
 
+    public Map<String, DataTypeDef> getDataTypes (){
+        
+        if (this.dataTypes != null){
+            return this.dataTypes;
+        }
+           
+        //this is kind of ugly.  Some databases (postgres) return the VALUES of
+        //metadata in lowercase, while others (hsqldb) return the VALUES of
+        //metadata in uppercase.  This is why the key values are stored as
+        //case insensitive - so it will work with default types for 
+        Map<String, DataTypeDef> types = new CaseInsensitiveMap();
+
+        try {
+            Connection conn = dataSource.getConnection();
+            DatabaseMetaData dmd = conn.getMetaData();
+            ResultSet rs = dmd.getTypeInfo();
+
+            //load all of the metadata in the result set into a map for each column
+
+            ResultSetMetaData rsmd = rs.getMetaData();
+            int metaDataColumnCount = rsmd.getColumnCount();
+            if (!rs.isBeforeFirst()) {
+                throw new RuntimeException("No results for DatabaseMetaData.getTypeInfo()");
+            }
+            while (rs.next()) {
+
+                DataTypeDef dtd = new DataTypeDef();
+
+                dtd.type_name = rs.getString("TYPE_NAME");
+                dtd.data_type = rs.getInt("DATA_TYPE");
+                dtd.precision = rs.getInt("PRECISION");
+                dtd.literal_prefix = rs.getString("LITERAL_PREFIX");
+                dtd.literal_suffix = rs.getString("LITERAL_SUFFIX");
+                dtd.create_params = rs.getString("CREATE_PARAMS");
+                dtd.nullable = rs.getShort("NULLABLE");
+                dtd.case_sensitive = rs.getBoolean("CASE_SENSITIVE");
+                dtd.searchable = rs.getShort("SEARCHABLE");
+                dtd.unsigned_attribute = rs.getBoolean("UNSIGNED_ATTRIBUTE");
+                dtd.fixed_prec_scale = rs.getBoolean("FIXED_PREC_SCALE");
+                dtd.auto_increment = rs.getBoolean("AUTO_INCREMENT");
+                dtd.local_type_name = rs.getString("LOCAL_TYPE_NAME");
+                dtd.minimum_scale = rs.getShort("MINIMUM_SCALE");
+                dtd.maximum_scale = rs.getShort("MAXIMUM_SCALE");
+                dtd.sql_data_type = rs.getInt("SQL_DATA_TYPE"); //not used
+                dtd.sql_datetime_sub = rs.getInt("SQL_DATETIME_SUB"); //not used
+                dtd.num_prec_radix = rs.getInt("NUM_PREC_RADIX");
+
+                types.put(dtd.type_name, dtd);
+
+            }
+
+        } catch (SQLException e) {
+            throw Throwables.propagate(e);
+        }
+
+        this.dataTypes = types;
+        
+        return types;
+
+    }
+    
    @Override
     public void setSchema(String unverifiedSchema) {
 
@@ -533,6 +602,7 @@ class GenericDMR implements DataSourceDMR {
         
         StringBuilder builder = new StringBuilder();
         StringBuilder constraints = new StringBuilder();
+        DataTypeDef dataTypeDef = null;
         boolean firstCol = true;
         String schema;
         
@@ -563,12 +633,15 @@ class GenericDMR implements DataSourceDMR {
                     else {
                         firstCol = false;
                     }
+                    
+                    dataTypeDef = getDataType(unit.typeName);
+                    
                     if (unit.identity){
                         builder.append(unit.columnName).append(" ").append("serial PRIMARY KEY").append(System.lineSeparator());
                     }
                     else {
-                        builder.append(unit.columnName).append(" ").append(unit.dataType);
-                        if (unit.size > 0){
+                        builder.append(unit.columnName).append(" ").append(unit.typeName);
+                        if (dataTypeDef.create_params != null &&  unit.size > 0){
                             builder.append(" (").append(unit.size);
                         
                             if (unit.decimalSize > 0){
@@ -627,7 +700,7 @@ class GenericDMR implements DataSourceDMR {
                     else {
                         firstCol = false;
                     }
-                    builder.append("ADD COLUMN ").append(unit.columnName).append(" ").append(unit.dataType);
+                    builder.append("ADD COLUMN ").append(unit.columnName).append(" ").append(unit.typeName);
                     if (unit.size > 0) {
                         builder.append(" (").append(unit.size);
 
@@ -646,7 +719,7 @@ class GenericDMR implements DataSourceDMR {
                     else {
                         firstCol = false;
                     }
-                    builder.append("ALTER COLUMN ").append(unit.columnName).append(" TYPE ").append(unit.dataType);
+                    builder.append("ALTER COLUMN ").append(unit.columnName).append(" TYPE ").append(unit.typeName);
                     if (unit.size > 0) {
                         builder.append(" (").append(unit.size);
 
@@ -792,6 +865,7 @@ class GenericDMR implements DataSourceDMR {
                     
                     ///////////////////////                    
                     //create the trigger
+                    builder.append("DROP TRIGGER IF EXISTS ").append(triggerName).append(" ON ").append(schema).append(tableName).append(";").append(System.lineSeparator());
                     builder.append("CREATE TRIGGER ").append(triggerName).append(System.lineSeparator());
                     builder.append("AFTER ");
                     if (onInsert){
@@ -884,7 +958,7 @@ class GenericDMR implements DataSourceDMR {
                     //run the sql...
                     break;
                 case dropTriggers:
-                    triggerName = unit.tableName + "audit";
+                    triggerName = unit.tableName + "_audit";
                     builder.append("DROP TRIGGER IF EXISTS ").append(triggerName).append(" ON ").append(schema).append(unit.tableName).append(";").append(System.lineSeparator());
                     break;
                 default:
@@ -957,5 +1031,33 @@ class GenericDMR implements DataSourceDMR {
 
          return length;
     }
-
+    
+    @Override
+    public DataTypeDef getDataType (String typeName){
+        
+        Map<String, DataTypeDef> dtds = this.getDataTypes();
+        
+        if (dtds.containsKey(typeName)){
+            return dtds.get(typeName);
+        }
+        else {
+            return null;
+        }
+                  
+    }
+    
+    @Override
+    public DataTypeDef getDataType (int dataType){
+        
+        Map<String, DataTypeDef> dtds = this.getDataTypes();
+        
+        for (DataTypeDef dtd : dtds.values()) {
+            if (dtd.data_type == dataType){
+                return dtd;
+            }
+        }
+        
+        return null;
+    }
+    
 }

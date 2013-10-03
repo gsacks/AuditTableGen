@@ -19,6 +19,10 @@ public enum ConfigAttributeTypes {
     auditinsert,
     auditupdate,
     auditdelete,
+    iddatatype,
+    userdatatype,
+    actiondatatype,
+    timestampdatatype,
     unknown;
     
 }

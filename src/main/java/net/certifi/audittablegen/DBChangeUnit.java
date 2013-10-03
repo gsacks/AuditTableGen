@@ -23,15 +23,15 @@ public class DBChangeUnit {
     String newColumnName = "";
     String foreignTable = "";
     Boolean firesTrigger = Boolean.TRUE;
-    String dataType = "";
+    String typeName = "";
     int size = 0;
     int decimalSize = 0;
     Boolean identity = Boolean.FALSE;
+    //DataTypeDef dataTypeDef = null;
 
     public DBChangeUnit( DBChangeType changeType) {
         this.changeType = changeType;
     }
-
     
     public DBChangeType getChangeType() {
         return changeType;
@@ -65,12 +65,12 @@ public class DBChangeUnit {
         this.foreignTable = foreignTable;
     }
 
-    public String getDataType() {
-        return dataType;
+    public String getTypeName() {
+        return typeName;
     }
 
-    public void setDataType(String dataType) {
-        this.dataType = dataType;
+    public void setTypeName(String dataType) {
+        this.typeName = dataType;
     }
 
     public int getDecimalSize() {
@@ -120,6 +120,14 @@ public class DBChangeUnit {
     public void setIdentity(Boolean identity) {
         this.identity = identity;
     }
+
+//    public DataTypeDef getDataTypeDef() {
+//        return dataTypeDef;
+//    }
+//
+//    public void setDataTypeDef(DataTypeDef dataTypeDef) {
+//        this.dataTypeDef = dataTypeDef;
+//    }
     
     @Override
     public String toString(){
@@ -140,7 +148,7 @@ public class DBChangeUnit {
             case alterColumnType:
                 builder.append("table=").append(this.getTableName()).append(" ");
                 builder.append("column=").append(this.getColumnName()).append(" ");
-                builder.append("datatype=").append(this.getDataType()).append(" ");
+                builder.append("datatype=").append(this.getTypeName()).append(" ");
                 builder.append("size=").append(this.getSize()).append(" ");
                 builder.append("decimalsize=").append(this.getDecimalSize()).append(" ");
                 builder.append("identity=").append(this.getIdentity().toString()).append(" ");
@@ -150,7 +158,7 @@ public class DBChangeUnit {
                 builder.append("table=").append(this.getTableName()).append(" ");
                 builder.append("column=").append(this.getColumnName()).append(" ");
                 builder.append("newname=").append(this.getNewColumnName()).append(" ");
-                builder.append("datatype=").append(this.getDataType()).append(" ");
+                builder.append("datatype=").append(this.getTypeName()).append(" ");
                 builder.append("size=").append(this.getSize()).append(" ");
                 builder.append("decimalsize=").append(this.getDecimalSize()).append(" ");
                 builder.append("identity=").append(this.getIdentity().toString()).append(" ");

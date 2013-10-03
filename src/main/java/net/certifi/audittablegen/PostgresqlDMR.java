@@ -101,6 +101,9 @@ public class PostgresqlDMR extends GenericDMR {
     @Override
     public List getColumns (String tableName){
         
+        //getDataTypes will initialize the map if it isn't already loaded
+        Map<String, DataTypeDef> dtds = getDataTypes();
+        
         List columns = new ArrayList<>();
         
         try {
@@ -125,19 +128,22 @@ public class PostgresqlDMR extends GenericDMR {
                 
                 String type_name = rs.getString("TYPE_NAME");
                 if ( type_name.equalsIgnoreCase("serial")){
-                    columnDef.setType("integer");
+                    columnDef.setTypeName("integer");
                 }
                 else {
-                    columnDef.setType(type_name);
+                    columnDef.setTypeName(type_name);
                 }
-                
-                if (true){
-                    //only set size for types that require it
-                    columnDef.setSize(rs.getInt("COLUMN_SIZE"));
-                }
+                columnDef.setSqlType(rs.getInt("DATA_TYPE"));
+                columnDef.setSize(rs.getInt("COLUMN_SIZE"));
                 columnDef.setDecimalSize(rs.getInt("DECIMAL_DIGITS"));
                 columnDef.setSourceMeta(columnMetaData);
                 
+                if (dtds.containsKey(columnDef.getTypeName())){
+                    columnDef.setDataTypeDef(dtds.get(columnDef.getTypeName()));
+                }
+                else {
+                    throw new RuntimeException("Missing DATA_TYPE definition for data type " + columnDef.getTypeName());
+                }                
                 columns.add(columnDef);
             }
             

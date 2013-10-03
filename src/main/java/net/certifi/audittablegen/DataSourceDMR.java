@@ -115,6 +115,30 @@ public interface DataSourceDMR {
      */
     void purgeDBChanges();
     
+    /**
+     * get a DataTypeDef object matching the typeName
+     * 
+     * @param typeName a string representing the TYPE_NAME as defined in the
+     * database, and returned by the jdbc implementation metadata.
+     * 
+     * @return The DataTypeDef for which the TYPE_NAME matches the typeName param.
+     * If there is no match the return value is null.
+     */
+    public DataTypeDef getDataType (String typeName);
+    
+    /**
+     * get a DataTypeDef object matching the dataType
+     * 
+     * @param dataType an integer which should match one of the java.sql.Types
+     * constants.
+     * 
+     * @return The DataTypeDef for which the java.sql.Types value matches
+     * the dataType param. If there is more than one match, the first
+     * dataTypeDef which matches the condition is returned.  If there is no match
+     * the return value is null.
+     */
+    DataTypeDef getDataType (int dataType);
+    
 //    void createTable (String tableName);
 //    void addColumn (String tableName, ColumnDef columnDef);
 //    void renameColumn (String tableName, String columnName);
