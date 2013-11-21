@@ -251,4 +251,38 @@ public class AuditTableGenTest {
 
     }
 
+    
+    /**
+     * This is an example use case scenario
+     */
+    @Test
+    public void testUseCaseAgp(){
+        
+        //get a dataSource for setting  up the test dataBase
+        //the same dataSource will be used to run the application
+        DataSource myDataSource = HsqldbDMR.getRunTimeDataSource();
+
+        //set up the database using liquibase
+        try {
+
+            Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(myDataSource.getConnection()));
+            Liquibase liquibase = new Liquibase("src/test/resources/changesets/changeset-init-config.xml", new FileSystemResourceAccessor(), database);
+            liquibase.update(null);
+            
+            liquibase = new Liquibase("src/test/resources/changesets/changeset-sample-tables.xml", new FileSystemResourceAccessor(), database);
+            liquibase.update(null);
+            
+        } catch (SQLException e){
+            logger.error("error setting up unit tests", e);
+        } catch (LiquibaseException le){
+            logger.error("liquibase error", le);
+        }
+
+        //run the application
+        AuditTableGen atg = new AuditTableGen(myDataSource, "PUBLIC");
+        atg.updateAuditTables();
+        
+        //that's it.
+
+    }
 }

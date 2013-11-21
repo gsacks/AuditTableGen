@@ -26,5 +26,6 @@ public enum DBChangeType {
     addTriggerAction,
     addTriggerUser,
     addTriggerTimeStamp,
+    addTriggerSessionUser,
     notSet;  
 }

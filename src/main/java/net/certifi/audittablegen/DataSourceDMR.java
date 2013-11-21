@@ -144,7 +144,22 @@ public interface DataSourceDMR {
 //    void renameColumn (String tableName, String columnName);
 //    void alterColumn (String tableName, ColumnDef columnDef);
     
-
+    /**
+     * set the custom SQL used to retrieve the current session user.
+     * Session user, if used, is set by the login application, and is distinct
+     * from the database user id.
+     * 
+     * @param sql The sql statement used to retrieve the session user. 
+     */
+    void setSessionUserSQL (String sql);
+    
+    /**
+     * get the custom SQL used to retrieve the current session user.
+     * 
+     * @return A String object containing the sql statement. 
+     */
+    String getSessionUserSQL();
+    
 }
 
     

@@ -184,6 +184,7 @@ public class DBChangeUnit {
             case addTriggerAction:
             case addTriggerTimeStamp:
             case addTriggerUser:
+            case addTriggerSessionUser:
                 builder.append("table=").append(this.getTableName()).append(" ");
                 builder.append("audittable=").append(this.getAuditTableName()).append(" ");
                 builder.append("column=").append(this.getColumnName()).append(" ");
@@ -328,6 +329,7 @@ public class DBChangeUnit {
                 case addTriggerAction:
                 case addTriggerTimeStamp:
                 case addTriggerUser:
+                case addTriggerSessionUser:
                     if (beginTag == false){
                         logger.info ("improperly formed List<DBChangeType>.  Missing [begin] before element %d", i);
                     }

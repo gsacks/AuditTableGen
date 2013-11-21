@@ -128,7 +128,7 @@ public class PostgresqlDMR extends GenericDMR {
                 
                 String type_name = rs.getString("TYPE_NAME");
                 if ( type_name.equalsIgnoreCase("serial")){
-                    columnDef.setTypeName("integer");
+                    columnDef.setTypeName("int4");
                 }
                 else {
                     columnDef.setTypeName(type_name);

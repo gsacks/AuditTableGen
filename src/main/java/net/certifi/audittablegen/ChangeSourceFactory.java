@@ -35,6 +35,11 @@ public class ChangeSourceFactory {
     String auditActionTypeName = "";
     Integer auditActionDefaultDataType = java.sql.Types.CHAR;
     
+    String sessionUserSQL = "";
+    String sessionUserTypeName = "";
+    Integer sessionUserDefaultDataType = java.sql.Types.CHAR;
+    Integer sessionUserDataSize = 0; //must be set if dataType requires a size
+    
     ChangeSourceFactory (ConfigSource configSource){
     
         this.configSource = configSource;
@@ -66,6 +71,15 @@ public class ChangeSourceFactory {
                 break;
             case actiondatatype:
                 auditActionTypeName = attrib.getValue();
+                break;
+            case sessionusersql:
+                sessionUserSQL = attrib.getValue();
+                break;
+            case sessionuserdatatype:
+                sessionUserTypeName = attrib.getValue();
+                break;
+            case sessionuserdatasize:
+                sessionUserDataSize = attrib.getIntValue();
                 break;
             default:
                 break;
@@ -205,12 +219,16 @@ public class ChangeSourceFactory {
                 + "action"
                 + columnPostfix;
         
-       String auditTimeStampColumn = columnPrefix
+        String auditTimeStampColumn = columnPrefix
                 + "ts"
                 + columnPostfix;
                 
         String auditUserColumn = columnPrefix
                 + "userId"
+                + columnPostfix;
+        
+        String sessionUserColumn = columnPrefix
+                + "sessionUser"
                 + columnPostfix;
         
         TableDef auditTableDef = null;
@@ -285,6 +303,17 @@ public class ChangeSourceFactory {
             workUnit.setDecimalSize(0);
             tableChangeUnits.add(workUnit);
             
+            //sessionUser
+            if (!sessionUserSQL.isEmpty()) {
+                workUnit = new DBChangeUnit(DBChangeType.addColumn);
+                workUnit.setColumnName(sessionUserColumn);
+                workUnit.setTableName(auditTableName);
+                workUnit.setTypeName(sessionUserTypeName);
+                workUnit.setSize(sessionUserDataSize);
+                workUnit.setDecimalSize(0);
+                tableChangeUnits.add(workUnit);
+            }
+
             //end of table
             tableChangeUnits.add(new DBChangeUnit(DBChangeType.end));
         }
@@ -339,6 +368,20 @@ public class ChangeSourceFactory {
                 workUnit.setSize(0);
                 workUnit.setDecimalSize(0);
                 alterTableChangeUnits.add(workUnit);
+            }
+            
+            //seesionuser
+            if (!sessionUserSQL.isEmpty()) {
+                if (!auditColumnMap.containsKey(sessionUserColumn)) {
+                    logger.warn("Existing audit table {} does not contain column {}. Creating", auditTableName, sessionUserColumn);
+                    workUnit = new DBChangeUnit(DBChangeType.addColumn);
+                    workUnit.setColumnName(sessionUserColumn);
+                    workUnit.setTableName(auditTableName);
+                    workUnit.setTypeName(sessionUserTypeName);
+                    workUnit.setSize(sessionUserDataSize);
+                    workUnit.setDecimalSize(0);
+                    tableChangeUnits.add(workUnit);
+                }
             }
             
             //add or alter columns
@@ -489,6 +532,16 @@ public class ChangeSourceFactory {
         workUnit.setAuditTableName(auditTableName);
         tableChangeUnits.add(workUnit);
         
+        //sessionuser
+        if (!sessionUserSQL.isEmpty()) {
+            workUnit = new DBChangeUnit(DBChangeType.addTriggerSessionUser);
+            workUnit.setColumnName(sessionUserColumn);
+            workUnit.setTableName(baseTableName);
+            workUnit.setAuditTableName(auditTableName);
+            tableChangeUnits.add(workUnit);
+        }
+        
+        
         //end trigger changes
         tableChangeUnits.add(new DBChangeUnit(DBChangeType.end));
         
@@ -611,7 +664,25 @@ public class ChangeSourceFactory {
                 auditTimeStampTypeName = dataTypeDef.type_name;
             }
         }
-      
+        
+        //session user column
+        if (!sessionUserSQL.isEmpty()) {
+            if (!sessionUserTypeName.isEmpty()) {
+                dataTypeDef = dmr.getDataType(sessionUserTypeName);
+                if (dataTypeDef == null) {
+                    logger.error("Configuration error.  Data type [{}] for session user column is not valid", sessionUserTypeName);
+                    result = false;
+                }
+            } else {
+                dataTypeDef = dmr.getDataType(sessionUserDefaultDataType);
+                if (dataTypeDef == null) {
+                    logger.error("Configuration error.  Default data type [{}] for session user column is not valid", sessionUserDefaultDataType);
+                    result = false;
+                } else {
+                    sessionUserTypeName = dataTypeDef.type_name;
+                }
+            }
+        }
         return result;
     }
     

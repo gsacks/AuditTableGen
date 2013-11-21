@@ -23,6 +23,9 @@ public enum ConfigAttributeTypes {
     userdatatype,
     actiondatatype,
     timestampdatatype,
+    sessionusersql,
+    sessionuserdatatype,
+    sessionuserdatasize,
     unknown;
     
 }

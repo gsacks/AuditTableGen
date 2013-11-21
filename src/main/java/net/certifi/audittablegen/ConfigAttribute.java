@@ -86,6 +86,25 @@ public class ConfigAttribute {
         }
     }
     
+    public int getIntValue() {
+
+        Integer i;
+
+        try {
+            i = Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            i = 0;
+            logger.error("Invalid integer value for attribute {}", attribute);
+            throw e;
+        }
+        return i;
+    }
+    
+    public void setIntValue (Integer value){
+        
+        this.value = value.toString();
+                
+    }
 
     
 }

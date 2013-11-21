@@ -9,8 +9,11 @@
             <column name="attribute" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
+            <column name="tablename" type="VARCHAR(255)">
+            </column>
+            <column name="columnname" type="VARCHAR(255)">
+            </column>
             <column name="value" type="VARCHAR(255)">
-                <constraints nullable="false"/>
             </column>
             <column name="insertts" type="TIMESTAMP"/>
             <column name="insertuserid" type="INTEGER"/>
@@ -63,8 +66,11 @@
             insert into auditconfigattribute (attribute, description) values ('auditdelete','apply audit delete trigger. Looks at tablename and value.  accepts regexp in tablename. Value is true or false.  Default is true.');       
             insert into auditconfigattribute (attribute, description) values ('iddatatype','data type to use to store the id column in the audit table.  Default is whichever native data type matches java.sql.Types.BIGINT.');
             insert into auditconfigattribute (attribute, description) values ('userdatatype','data type to use to store the username in the audit table.  Default is whichever native data type matches java.sql.Types.CHAR.');
-            insert into auditconfigattribute (attribute, description) values ('actiondatatype','data type to use to store the audit action e in the audit table.  Default is whichever native data type matches java.sql.Types.CHAR.');
+            insert into auditconfigattribute (attribute, description) values ('actiondatatype','data type to use to store the audit action in the audit table.  Default is whichever native data type matches java.sql.Types.CHAR.');
             insert into auditconfigattribute (attribute, description) values ('timestampdatatype','data type to use to store the timestamp in the audit table.  Default is whichever native data type matches java.sql.Types.TIMESTAMP.');
+            insert into auditconfigattribute (attribute, description) values ('sessionusersql','sql statement to retrieve the session user.  No default value.');
+            insert into auditconfigattribute (attribute, description) values ('sessionuserdatatype','data type to use to store the session user in the audit table.  Default is whichever native data type matches java.sql.Types.CHAR.');
+            insert into auditconfigattribute (attribute, description) values ('sessionuserdatasize','data size to use to store the timestamp in the audit table.  Must be se if sessionuserdata type requires a size.');
 
         </sql> 
     </changeSet>

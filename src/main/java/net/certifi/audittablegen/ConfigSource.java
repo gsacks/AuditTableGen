@@ -67,18 +67,13 @@ public class ConfigSource {
             case tablepostfix:
             case columnprefix:
             case columnpostfix:
-                dbAttribs.add(attrib);
-                break;
-            case iddatatype:
-                dbAttribs.add(attrib);
-                break;                
+            case iddatatype:               
             case userdatatype:
-                dbAttribs.add(attrib);
-                break;
             case actiondatatype:
-                dbAttribs.add(attrib);
-                break;
             case timestampdatatype:
+            case sessionusersql:
+            case sessionuserdatatype:
+            case sessionuserdatasize:
                 dbAttribs.add(attrib);
                 break;
             case auditinsert:

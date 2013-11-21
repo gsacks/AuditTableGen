@@ -157,6 +157,11 @@ public class AuditTableGen {
                 return false;
             }
             
+            //if configSource has attribute for sessionUser SQL, set it here in the dmr.
+            if (!factory.sessionUserSQL.isEmpty()){
+                dmr.setSessionUserSQL(factory.sessionUserSQL);
+            }
+          
             List<DBChangeUnit> unitList = factory.getDBChangeList();
             if (DBChangeUnit.validateUnitList(unitList)) {
                 dmr.readDBChangeList(unitList);

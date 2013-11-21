@@ -37,6 +37,7 @@ class GenericDMR implements DataSourceDMR {
     String unverifiedAuditConfigTable = "auditconfig";
     String verifiedAuditConfigTable;
     String lastSQL; //adding this for testing
+    String sessionUserSQL;
     Queue<List<DBChangeUnit>> operations = new ArrayDeque<>();
     Map<String, DataTypeDef> dataTypes = null;
     //IdentifierMetaData idMetaData;
@@ -184,7 +185,7 @@ class GenericDMR implements DataSourceDMR {
             schema = "";
         }
         
-        builder.append("select attribute, table, column, value from ").append(schema).append(verifiedAuditConfigTable);
+        builder.append("select attribute, tablename, columnname, value from ").append(schema).append(verifiedAuditConfigTable);
                 
         List<ConfigAttribute> attributes = new ArrayList();
         
@@ -218,7 +219,7 @@ class GenericDMR implements DataSourceDMR {
             conn.close();
             
         } catch (SQLException ex) {
-            logger.error("Error retrieving audit configuration" + ex.getMessage());
+            logger.error("Error retrieving audit configuration " + ex.getMessage());
         }
         
         return attributes;
@@ -668,6 +669,7 @@ class GenericDMR implements DataSourceDMR {
         
         StringBuilder builder = new StringBuilder();
         StringBuilder constraints = new StringBuilder();
+        DataTypeDef dataTypeDef = null;
         boolean firstCol = true;
         String schema;
         
@@ -696,16 +698,29 @@ class GenericDMR implements DataSourceDMR {
                     else {
                         firstCol = false;
                     }
-                    builder.append("ADD COLUMN ").append(unit.columnName).append(" ").append(unit.typeName);
-                    if (unit.size > 0) {
-                        builder.append(" (").append(unit.size);
-
-                        if (unit.decimalSize > 0) {
-                            builder.append(",").append(unit.decimalSize);
-                        }
-                        builder.append(") ");
+                    builder.append("ADD COLUMN ");
+                    
+                    dataTypeDef = getDataType(unit.typeName);
+                    
+                    if (unit.identity){
+                        builder.append(unit.columnName).append(" ").append("serial PRIMARY KEY").append(System.lineSeparator());
                     }
-                    builder.append(System.lineSeparator());
+                    else {
+                        builder.append(unit.columnName).append(" ").append(unit.typeName);
+                        if (dataTypeDef.create_params != null &&  unit.size > 0){
+                            builder.append(" (").append(unit.size);
+                        
+                            if (unit.decimalSize > 0){
+                                builder.append(",").append(unit.decimalSize);
+                            }
+                            builder.append(") ");
+                        }
+                        if (!unit.foreignTable.isEmpty()){
+                            builder.append("REFERENCES ").append(unit.foreignTable).append(" (").append(unit.columnName).append(")");
+                            //constraints.append("CONSTRAINT ").append(unit.columnName).append(" REFERENCES ").append(unit.foreignTable);
+                        }
+                        builder.append(System.lineSeparator());
+                    }
                     break;
                 case alterColumnSize:
                 case alterColumnType:
@@ -725,6 +740,7 @@ class GenericDMR implements DataSourceDMR {
                         builder.append(") ");
                     }
                     builder.append(System.lineSeparator());
+                    break;
                 case alterColumnName:
                     if (!firstCol){
                         builder.append(", ");
@@ -1054,6 +1070,19 @@ class GenericDMR implements DataSourceDMR {
         }
         
         return null;
+    }
+
+    @Override
+    public void setSessionUserSQL(String sql) {
+        
+        this.sessionUserSQL = sql;
+        
+    }
+
+    @Override
+    public String getSessionUserSQL() {
+        
+        return sessionUserSQL;
     }
     
 }
