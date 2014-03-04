@@ -218,8 +218,8 @@ class GenericDMR implements DataSourceDMR {
                 //load attributes into configSource
                 ConfigAttribute attrib = new ConfigAttribute();
                 attrib.setAttribute(rs.getString("attribute"));
-                attrib.setTableName(rs.getString("table"));
-                attrib.setColumnName(rs.getString("column"));
+                attrib.setTableName(rs.getString("tablename"));
+                attrib.setColumnName(rs.getString("columnname"));
                 attrib.setValue(rs.getString("value"));
                 
                 attributes.add(attrib);
@@ -556,6 +556,7 @@ class GenericDMR implements DataSourceDMR {
                 case addTriggerAction:
                 case addTriggerTimeStamp:
                 case addTriggerUser:
+                case addTriggerSessionUser:
                     workList.add(unit);
                     break;
                 case notSet:
@@ -798,6 +799,7 @@ class GenericDMR implements DataSourceDMR {
         String auditTableName = null;
         String actionColumn = null;
         String userColumn = null;
+        String sessionUserColumn = null;
         String timeStampColumn = null;
         boolean firstTrig = true;
         boolean onDelete = true;
@@ -822,8 +824,8 @@ class GenericDMR implements DataSourceDMR {
                 case end:
                     if (actionColumn == null || timeStampColumn == null || userColumn == null){
                         logger.error("Trigger info for table %s missing audit columns for: %s %s %s",
-                                tableName, actionColumn == null ? "action" : "",
-                                timeStampColumn == null ? "timeStamp" : "",
+                                tableName, actionColumn == null ? "action " : "",
+                                timeStampColumn == null ? "timeStamp " : "",
                                 userColumn == null ? "user" : "");
                         return null;
                     }
@@ -854,6 +856,12 @@ class GenericDMR implements DataSourceDMR {
                     insertDetail.append(String.format("        INSERT INTO %s%s (%s, %s, %s", schema, auditTableName, actionColumn, userColumn, timeStampColumn));
                     updateDetail.append(String.format("        INSERT INTO %s%s (%s, %s, %s", schema, auditTableName, actionColumn, userColumn, timeStampColumn));
                     deleteDetail.append(String.format("        INSERT INTO %s%s (%s, %s, %s", schema, auditTableName, actionColumn, userColumn, timeStampColumn));
+    
+                    if (sessionUserColumn != null){
+                        insertDetail.append(", ").append(sessionUserColumn);
+                        updateDetail.append(", ").append(sessionUserColumn);
+                        deleteDetail.append(", ").append(sessionUserColumn);
+                    }
                     for (String col : columns){
                         insertDetail.append(", ").append(col);
                         updateDetail.append(", ").append(col);
@@ -868,6 +876,11 @@ class GenericDMR implements DataSourceDMR {
                     insertDetail.append("        SELECT 'insert', user, now()");
                     updateDetail.append("        SELECT 'update', user, now()");
                     deleteDetail.append("        SELECT 'delete', user, now()");
+                    if (sessionUserColumn != null){
+                        insertDetail.append(", ").append(this.getSessionUserSQL());
+                        updateDetail.append(", ").append(this.getSessionUserSQL());
+                        deleteDetail.append(", ").append(this.getSessionUserSQL());
+                    }
                     for (String col : columns){
                         insertDetail.append(", NEW.").append(col);
                         updateDetail.append(", NEW.").append(col);
@@ -955,6 +968,9 @@ class GenericDMR implements DataSourceDMR {
                     break;
                 case addTriggerTimeStamp:
                     timeStampColumn = unit.getColumnName();
+                    break;
+                case addTriggerSessionUser:
+                    sessionUserColumn = unit.getColumnName();
                     break;
                 default:
                     //should not get here if the list is valid, unless a new changetype
@@ -1095,7 +1111,7 @@ class GenericDMR implements DataSourceDMR {
     @Override
     public void setSessionUserSQL(String sql) {
         
-        this.sessionUserSQL = sql;
+        this.sessionUserSQL = "(" + sql + ")";
         
     }
 

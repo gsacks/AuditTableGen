@@ -394,7 +394,7 @@ public class ChangeSourceFactory {
                     workUnit.setTypeName(sessionUserTypeName);
                     workUnit.setSize(sessionUserDataSize);
                     workUnit.setDecimalSize(0);
-                    tableChangeUnits.add(workUnit);
+                    alterTableChangeUnits.add(workUnit);
                 }
             }
             
