@@ -1,6 +1,25 @@
+<!--
+     Copyright 2014 Certifi Inc.
+ 
+     This file is part of AuditTableGen.
+ 
+         AuditTableGen is free software: you can redistribute it and/or modify
+         it under the terms of the GNU General Public License as published by
+         the Free Software Foundation, either version 3 of the License, or
+         (at your option) any later version.
+ 
+         AuditTableGen is distributed in the hope that it will be useful,
+         but WITHOUT ANY WARRANTY; without even the implied warranty of
+         MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+         GNU General Public License for more details.
+ 
+         You should have received a copy of the GNU General Public License
+         along with AuditTableGen.  If not, see <http://www.gnu.org/licenses/>.
+ -->
 
 <databaseChangeLog logicalFilePath="changeset-init-config.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
+    
     <changeSet author="gsacks" id="AuditTableGen config">
         <createTable tableName="auditconfig">
             <column name="auditconfigid" type="INTEGER" autoIncrement="true">
@@ -55,15 +74,15 @@
     
     <changeSet id="insert-initial-attributes" author="gsacks"> 
         <sql>
-            insert into auditconfigattribute (attribute, description) values ('include','include named table or column in the audit list. Accepts regexp in table and column.  Use to override exclude.');
-            insert into auditconfigattribute (attribute, description) values ('exclude','exclude named table or column in the audit list. Accepts regexp in table and column.');
-            insert into auditconfigattribute (attribute, description) values ('tableprefix','audit table prefix pattern. Set value=&lt;prefix&gt;. Default if not set is zz_');
+            insert into auditconfigattribute (attribute, description) values ('include','include named table or column in the audit list. Accepts regexp in table and column - NOT WORKING.  Use to override exclude.');
+            insert into auditconfigattribute (attribute, description) values ('exclude','exclude named table or column in the audit list. Accepts regexp in table and column - NOT WORKING.');
+            insert into auditconfigattribute (attribute, description) values ('tableprefix','audit table prefix pattern. Set value=&lt;prefix&gt;. Default is zz_');
             insert into auditconfigattribute (attribute, description) values ('tablepostfix','audit table postfix pattern.  Set value=&lt;prefix&gt;. Derfault is no postfix');
             insert into auditconfigattribute (attribute, description) values ('columnprefix','audit column prefix pattern for id, user, action, and timestamp columns.  Set value=&lt;prefix&gt;. Default is zz_');
             insert into auditconfigattribute (attribute, description) values ('columnpostfix','audit column postfix pattern.  Set value=&lt;prefix&gt;. Derfault is no postfix');
-            insert into auditconfigattribute (attribute, description) values ('auditinsert','apply audit insert trigger. Looks at tablename and value.  accepts regexp in tablename. Value is true or false.  Default is true.');
-            insert into auditconfigattribute (attribute, description) values ('auditupdate','apply audit update trigger. Looks at tablename and value.  accepts regexp in tablename. Value is true or false.  Default is true.');
-            insert into auditconfigattribute (attribute, description) values ('auditdelete','apply audit delete trigger. Looks at tablename and value.  accepts regexp in tablename. Value is true or false.  Default is true.');       
+            insert into auditconfigattribute (attribute, description) values ('auditinsert','apply audit insert trigger. Looks at tablename and value.  accepts regexp in tablename - NOT WORKING. Value is true or false.  Default is true.');
+            insert into auditconfigattribute (attribute, description) values ('auditupdate','apply audit update trigger. Looks at tablename and value.  accepts regexp in tablename - NOT WORKING. Value is true or false.  Default is true.');
+            insert into auditconfigattribute (attribute, description) values ('auditdelete','apply audit delete trigger. Looks at tablename and value.  accepts regexp in tablename - NOT WORKING. Value is true or false.  Default is true.');       
             insert into auditconfigattribute (attribute, description) values ('iddatatype','data type to use to store the id column in the audit table.  Default is whichever native data type matches java.sql.Types.BIGINT.');
             insert into auditconfigattribute (attribute, description) values ('userdatatype','data type to use to store the username in the audit table.  Default is whichever native data type matches java.sql.Types.CHAR.');
             insert into auditconfigattribute (attribute, description) values ('actiondatatype','data type to use to store the audit action in the audit table.  Default is whichever native data type matches java.sql.Types.CHAR.');
