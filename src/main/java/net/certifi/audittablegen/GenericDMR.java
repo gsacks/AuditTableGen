@@ -20,6 +20,7 @@ package net.certifi.audittablegen;
 
 import com.google.common.base.Throwables;
 import java.sql.*;
+import java.sql.Types;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.logging.Level;
@@ -35,6 +36,7 @@ import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.commons.dbcp.BasicDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.google.common.primitives.Ints;
 
 
 /**
@@ -393,6 +395,12 @@ class GenericDMR implements DataSourceDMR {
                 dtd.sql_datetime_sub = rs.getInt("SQL_DATETIME_SUB"); //not used
                 dtd.num_prec_radix = rs.getInt("NUM_PREC_RADIX");
 
+                //google guava primitive types tools
+                if (Ints.contains(DataTypeDef.sqlSizedTypes, dtd.data_type)
+                        && !dtd.type_name.equals("text")){
+                    dtd.createWithSize = true;
+                }
+                
                 types.put(dtd.type_name, dtd);
 
             }
@@ -598,6 +606,7 @@ class GenericDMR implements DataSourceDMR {
                     break;
                 case dropTriggers:
                     query = getDropTriggerSQL(op);
+                    break;
                 default:
                     //should not get here if the list is valid, unless a new changetype
                     //was added that this DMR does not know about.  If which case - fail.
@@ -659,7 +668,8 @@ class GenericDMR implements DataSourceDMR {
                     }
                     else {
                         builder.append(unit.columnName).append(" ").append(unit.typeName);
-                        if (dataTypeDef.create_params != null &&  unit.size > 0){
+//                        if (dataTypeDef.create_params != null &&  unit.size > 0){
+                          if (dataTypeDef.createWithSize &&  unit.size > 0){
                             builder.append(" (").append(unit.size);
                         
                             if (unit.decimalSize > 0){
@@ -728,7 +738,8 @@ class GenericDMR implements DataSourceDMR {
                     }
                     else {
                         builder.append(unit.columnName).append(" ").append(unit.typeName);
-                        if (dataTypeDef.create_params != null &&  unit.size > 0){
+//                        if (dataTypeDef.create_params != null &&  unit.size > 0){
+                          if (dataTypeDef.createWithSize &&  unit.size > 0){
                             builder.append(" (").append(unit.size);
                         
                             if (unit.decimalSize > 0){
