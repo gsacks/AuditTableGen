@@ -53,7 +53,21 @@ public class DataTypeDef {
     short maximum_scale; // maximum scale supported //MAXIMUM_SCALE 
     int sql_data_type; // unused //SQL_DATA_TYPE 
     int sql_datetime_sub; // unused //SQL_DATETIME_SUB 
-    int num_prec_radix; // usually 2 or 10 //NUM_PREC_RADIX 
+    int num_prec_radix; // usually 2 or 10 //NUM_PREC_RADIX
+    
+    //additional params - not from MetaData
+    boolean createWithSize;
+    
+    static int[] sqlSizedTypes = {
+        java.sql.Types.CHAR,
+        java.sql.Types.VARCHAR,
+        java.sql.Types.DECIMAL,
+        java.sql.Types.FLOAT,
+        java.sql.Types.NCHAR,
+        java.sql.Types.NUMERIC,
+        java.sql.Types.NVARCHAR,
+        java.sql.Types.VARBINARY,
+        java.sql.Types.VARCHAR};
        
     @Override
     public String toString(){
