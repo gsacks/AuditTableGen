@@ -21,6 +21,7 @@ package net.certifi.audittablegen;
 import java.sql.*;
 import java.util.*;
 import javax.sql.DataSource;
+import org.apache.commons.collections.map.CaseInsensitiveMap;
 import static org.junit.Assert.*;
 import org.junit.*;
 import static org.mockito.Matchers.anyInt;
@@ -811,11 +812,32 @@ public class GenericDMRTest {
         cd.typeName = "varchar";
         cd.size = 255;
         td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "zz_userId";
+        cd.typeName = "varchar";
+        cd.size = 255;
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "zz_action";
+        cd.typeName = "varchar";
+        cd.size = 255;
+        td.addColumn(cd);
+        cd = new ColumnDef();
+        cd.name = "zz_ts";
+        cd.typeName = "timestamp";
+        cd.size = 0;
+        td.addColumn(cd);
         realConfigSource.addTable(td);
         
         realConfigSource.dbAttribs = new ArrayList<>();
         ChangeSourceFactory factory = new ChangeSourceFactory(realConfigSource);
         dmr.verifiedSchema = "public";
+        DataTypeDef mkDtd = mock(DataTypeDef.class);
+        dmr.dataTypes = new CaseInsensitiveMap();
+        dmr.dataTypes.put("varchar", mkDtd);
+        mkDtd.createWithSize=true;
+        //when(mkDtd.createWithSize).thenReturn(Boolean.TRUE);
+        
         List<DBChangeUnit> units = factory.getDBChangeList();
         dmr.readDBChangeList(units);
                 

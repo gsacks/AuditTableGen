@@ -75,9 +75,9 @@
             insert into auditconfigattribute (attribute, description) values ('include','include named table or column in the audit list. Accepts regexp in table and column.  Use to override exclude.');
             insert into auditconfigattribute (attribute, description) values ('exclude','exclude named table or column in the audit list. Accepts regexp in table and column.');
             insert into auditconfigattribute (attribute, description) values ('tableprefix','audit table prefix pattern. Set value=&lt;prefix&gt;. Default if not set is zz_');
-            insert into auditconfigattribute (attribute, description) values ('tablepostfix','audit table postfix pattern.  Set value=&lt;prefix&gt;. Derfault is no postfix');
+            insert into auditconfigattribute (attribute, description) values ('tablepostfix','audit table postfix pattern.  Set value=&lt;prefix&gt;. Default is no postfix');
             insert into auditconfigattribute (attribute, description) values ('columnprefix','audit column prefix pattern for id, user, action, and timestamp columns.  Set value=&lt;prefix&gt;. Default is zz_');
-            insert into auditconfigattribute (attribute, description) values ('columnpostfix','audit column postfix pattern.  Set value=&lt;prefix&gt;. Derfault is no postfix');
+            insert into auditconfigattribute (attribute, description) values ('columnpostfix','audit column postfix pattern.  Set value=&lt;prefix&gt;. Default is no postfix');
             insert into auditconfigattribute (attribute, description) values ('auditinsert','apply audit insert trigger. Looks at tablename and value.  accepts regexp in tablename. Value is true or false.  Default is true.');
             insert into auditconfigattribute (attribute, description) values ('auditupdate','apply audit update trigger. Looks at tablename and value.  accepts regexp in tablename. Value is true or false.  Default is true.');
             insert into auditconfigattribute (attribute, description) values ('auditdelete','apply audit delete trigger. Looks at tablename and value.  accepts regexp in tablename. Value is true or false.  Default is true.');       
