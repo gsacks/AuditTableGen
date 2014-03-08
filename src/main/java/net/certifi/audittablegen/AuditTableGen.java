@@ -288,13 +288,13 @@ public class AuditTableGen {
         try {
             ds = getRunTimeDataSource(prop);
             atg = new AuditTableGen(ds, prop.getProperty("schema", null));
-            logger.info(atg.getDataSourceInfo());
+            //logger.info(atg.getDataSourceInfo());
 
             //DataSourceDMR dsDMR = GetDataSourceDMR (cmd);
 //            Connection conn = GetConnection.ConnectionFromOptions(prop);
 //            TestConnection.GetData(conn);
 //            conn.close(); 
-        } catch (SQLException ex) {
+        } catch (Exception ex) {
            logger.error("Error", ex);
            throw Throwables.propagate(ex);
         }

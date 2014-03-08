@@ -64,7 +64,7 @@ public class PostgresqlDMR extends GenericDMR {
         dataSource.setUser(props.getProperty("username"));
         dataSource.setPassword(props.getProperty("password"));
         //dataSource.setInitialConnections(2);
-        dataSource.setApplicationName("AuditTableGen");
+        //dataSource.setApplicationName("AuditTableGen");
         dataSource.setServerName(props.getProperty("server"));
         dataSource.setDatabaseName(props.getProperty("database"));
         if (props.containsKey("port")){
