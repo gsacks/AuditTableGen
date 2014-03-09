@@ -119,4 +119,17 @@
             </plugin>
         </plugins>
     </build>
+
+    <scm>
+        <connection>scm:git:git://github.com/gsacks/AuditTableGen.git</connection>
+    </scm>
+
+    <distributionManagement>
+        <repository>
+            <id>deployment</id>
+            <name>Internal Releases</name>
+            <url>http://maven.enrfin.com:8081/nexus/content/repositories/releases/</url>
+        </repository>
+    </distributionManagement>
+
 </project>
