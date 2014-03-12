@@ -9,7 +9,26 @@
     <packaging>jar</packaging>
 
     <name>AuditTableGen</name>
+    <description>tools to auto generate database audit table</description>
     <url>http://maven.apache.org</url>
+
+    <licenses>
+        <license>
+            <name>GNU General Public License (GPL) version 3</name>
+            <url>http://www.gnu.org/licenses/gpl-3.0.html</url>
+            <distribution></distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <email>gsacksmn@gmail.com</email>
+            <name>Glenn Sacks</name>
+            <url>https://github.com/gsacks</url>
+            <id>gsacks</id>
+        </developer>
+    </developers>
+
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -121,6 +140,7 @@
     </build>
 
     <scm>
+        <url>https://github.com/gsacks/AuditTableGen/</url>
         <connection>scm:git:git://github.com/gsacks/AuditTableGen.git</connection>
     </scm>
 
