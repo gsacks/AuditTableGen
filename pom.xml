@@ -120,7 +120,9 @@
     </build>
 
     <scm>
-        <connection>scm:git:git://github.com/jputney/AuditTableGen.git</connection>
+        <connection>scm:git:git://git@github.com/jputney/AuditTableGen.git</connection>
+        <url>scm:git:git://git@github.com/jputney/AuditTableGen.git</url>
+        <developerConnection>scm:git:git://git@github.com/jputney/AuditTableGen.git</developerConnection>
     </scm>
 
     <distributionManagement>
