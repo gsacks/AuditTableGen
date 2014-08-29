@@ -27,8 +27,7 @@ import java.util.Properties;
 import javax.sql.DataSource;
 import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.commons.dbcp.BasicDataSource;
-import org.postgresql.Driver;
-import org.postgresql.ds.PGSimpleDataSource;
+import org.postgresql.ds.PGPoolingDataSource;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -58,8 +57,8 @@ public class PostgresqlDMR extends GenericDMR {
     static DataSource getRunTimeDataSource(Properties props){
         
         //BasicDataSource dataSource = new BasicDataSource();
-        //PGPoolingDataSource dataSource = new PGPoolingDataSource();
-        PGSimpleDataSource dataSource = new PGSimpleDataSource();
+        PGPoolingDataSource dataSource = new PGPoolingDataSource();
+        //PGSimpleDataSource dataSource = new PGSimpleDataSource();
         int port;
         dataSource.setUser(props.getProperty("username"));
         dataSource.setPassword(props.getProperty("password"));
