@@ -844,7 +844,7 @@ class GenericDMR implements DataSourceDMR {
                     
                     //////////////////////
                     //generate the when clause for the update trigger
-                    if (columns.size() > whenColumns.size() ){
+                    if ( true /* columns.size() > whenColumns.size() */ ){
                         //some columns excluded from update
                         updateConditional.append("AND (");
                         boolean firstCol = true;
