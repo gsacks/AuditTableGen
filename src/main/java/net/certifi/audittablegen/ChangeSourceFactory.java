@@ -19,6 +19,8 @@
 package net.certifi.audittablegen;
 
 import java.util.*;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.exception.ContextedRuntimeException;
 import org.slf4j.Logger;
@@ -133,10 +135,20 @@ public class ChangeSourceFactory {
         //TODO: this is where regexp or wildcard pattern matching should go
         if (pattern.isEmpty()
                 || pattern.equals("*")
-                || pattern.toLowerCase().equals(str.toLowerCase())) {
+                || pattern.toLowerCase().equals(str.toLowerCase()) ) {
             return Boolean.TRUE;
         }
 
+		  try {
+				Pattern p = Pattern.compile( pattern, Pattern.CASE_INSENSITIVE|Pattern.UNICODE_CASE );
+				if ( p != null && p.matcher( str ).matches() ) return Boolean.TRUE;
+		  
+		  } catch( IllegalArgumentException x) {
+			  
+			  logger.warn( "Invalid Regexp " + x.getMessage() );
+		  }
+		  
+		  
         return Boolean.FALSE;
 
     }

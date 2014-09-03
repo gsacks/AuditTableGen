@@ -133,6 +133,7 @@ public class PostgresqlDMR extends GenericDMR {
                 throw new RuntimeException("No results for DatabaseMetaData.getColumns(" + verifiedSchema + "." + tableName + ")");
             }
             while (rs.next()){
+					
                 ColumnDef columnDef = new ColumnDef();
                 Map columnMetaData = new CaseInsensitiveMap();
                 for (int i = 1; i <= metaDataColumnCount; i++){
@@ -148,7 +149,7 @@ public class PostgresqlDMR extends GenericDMR {
                     columnDef.setTypeName(type_name);
                 }
                 columnDef.setSqlType(rs.getInt("DATA_TYPE"));
-                columnDef.setSize(rs.getInt("COLUMN_SIZE"));
+                columnDef.setSize( Integer.MAX_VALUE == rs.getInt("COLUMN_SIZE") ? 0 :  rs.getInt("COLUMN_SIZE") );  //if a column is maxed don't specify the size
                 columnDef.setDecimalSize(rs.getInt("DECIMAL_DIGITS"));
                 columnDef.setSourceMeta(columnMetaData);
                 
@@ -159,8 +160,11 @@ public class PostgresqlDMR extends GenericDMR {
                     throw new RuntimeException("Missing DATA_TYPE definition for data type " + columnDef.getTypeName());
                 }                
                 columns.add(columnDef);
+					 if ( tableName.equals("hiera" ) ) System.out.println( columnDef.toString() );
+				
             }
             
+				conn.close();
         }
         catch (SQLException e) {
             throw Throwables.propagate(e);

@@ -405,6 +405,7 @@ class GenericDMR implements DataSourceDMR {
 
             }
 
+				conn.close();
         } catch (SQLException e) {
             throw Throwables.propagate(e);
         }
