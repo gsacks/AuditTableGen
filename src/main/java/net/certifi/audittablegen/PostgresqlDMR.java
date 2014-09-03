@@ -160,7 +160,6 @@ public class PostgresqlDMR extends GenericDMR {
                     throw new RuntimeException("Missing DATA_TYPE definition for data type " + columnDef.getTypeName());
                 }                
                 columns.add(columnDef);
-					 if ( tableName.equals("hiera" ) ) System.out.println( columnDef.toString() );
 				
             }
             
