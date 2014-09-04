@@ -142,12 +142,18 @@ public class PostgresqlDMR extends GenericDMR {
                 columnDef.setName(rs.getString("COLUMN_NAME"));
                 
                 String type_name = rs.getString("TYPE_NAME");
-                if ( type_name.equalsIgnoreCase("serial")){
-                    columnDef.setTypeName("int4");
-                }
-                else {
-                    columnDef.setTypeName(type_name);
-                }
+					 switch( type_name.toLowerCase() ) {
+						 case "serial":
+							 columnDef.setTypeName("int4");
+							 break;
+						 case "bigserial":
+							 columnDef.setTypeName("int8");
+							 break;
+						 default:
+							 columnDef.setTypeName(type_name);
+							 break;
+					 }
+
                 columnDef.setSqlType(rs.getInt("DATA_TYPE"));
                 columnDef.setSize( Integer.MAX_VALUE == rs.getInt("COLUMN_SIZE") ? 0 :  rs.getInt("COLUMN_SIZE") );  //if a column is maxed don't specify the size
                 columnDef.setDecimalSize(rs.getInt("DECIMAL_DIGITS"));
