@@ -79,6 +79,7 @@ public class ChangeSourceFactory {
                 break;
             case iddatatype:
                 auditIdTypeName = attrib.getValue();
+					break;
             case userdatatype:      
                 auditUserTypeName = attrib.getValue();
                 break;
