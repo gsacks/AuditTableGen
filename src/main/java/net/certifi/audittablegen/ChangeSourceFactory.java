@@ -308,7 +308,7 @@ public class ChangeSourceFactory {
             workUnit.setColumnName(auditActionColumn);
             workUnit.setTableName(auditTableName);
             workUnit.setTypeName(auditActionTypeName); //insert, update, or delete
-            workUnit.setSize(6);
+            workUnit.setSize(1);
             workUnit.setDecimalSize(0);
             tableChangeUnits.add(workUnit);
             

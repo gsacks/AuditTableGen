@@ -974,9 +974,9 @@ class GenericDMR implements DataSourceDMR {
                     
                     //////////////////////
                     //generate the insert column valuues for the trigger(s)
-                    insertDetail.append("        SELECT 'insert', user, now()");
-                    updateDetail.append("        SELECT 'update', user, now()");
-                    deleteDetail.append("        SELECT 'delete', user, now()");
+                    insertDetail.append("        SELECT 'I', user, now()");
+                    updateDetail.append("        SELECT 'U', user, now()");
+                    deleteDetail.append("        SELECT 'D', user, now()");
                     if (sessionUserColumn != null){
                         insertDetail.append(", ").append(this.getSessionUserSQL());
                         updateDetail.append(", ").append(this.getSessionUserSQL());
