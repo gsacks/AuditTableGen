@@ -658,7 +658,7 @@ class GenericDMR implements DataSourceDMR {
                     break;
 						 
                 case fillAuditTable:
-                    builder.append("insert into ").append(schema).append(unit.tableName).append(" (").append(System.lineSeparator());
+                    builder.append("insert into ").append(schema).append(unit.getAuditTableName()).append(" (").append(System.lineSeparator());
 						  select.append("select ").append(System.lineSeparator());
                     break;
 						 
