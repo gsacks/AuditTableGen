@@ -1178,6 +1178,7 @@ class GenericDMR implements DataSourceDMR {
             
         } catch (SQLException ex) {
             logger.error("Update failed...", ex);
+				throw new RuntimeException( "Error applying AuditTable SQL", ex );
         }
     }
 
