@@ -41,7 +41,16 @@ public class DBChangeUnit {
     int size = 0;
     int decimalSize = 0;
     Boolean identity = Boolean.FALSE;
+	 TableDef tableDef = null;
     //DataTypeDef dataTypeDef = null;
+
+	public TableDef getTableDef() {
+		return tableDef;
+	}
+
+	public void setTableDef(TableDef tableDef) {
+		this.tableDef = tableDef;
+	}
 
     public DBChangeUnit( DBChangeType changeType) {
         this.changeType = changeType;

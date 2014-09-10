@@ -792,6 +792,9 @@ class GenericDMR implements DataSourceDMR {
         StringBuilder constraints = new StringBuilder();
         DataTypeDef dataTypeDef = null;
         boolean firstCol = true;
+		  boolean firstUpdateCol = true;
+		  StringBuilder updateSQL = new StringBuilder();
+		  
         String schema;
         
         if (verifiedSchema != null){
@@ -808,9 +811,23 @@ class GenericDMR implements DataSourceDMR {
                     break;
                 case end:
                     builder.append(constraints);
+						  if ( firstUpdateCol != true ) {
+							  updateSQL.append(System.lineSeparator()).append( "from ").append(schema).append(unit.getTableName()).append( " orig").append(System.lineSeparator());
+							  updateSQL.append( "inner join ").append(schema).append(unit.getAuditTableName()).append(" audit" ).append(System.lineSeparator());
+							  
+							  ColumnDef primaryKey = unit.getTableDef().getPrimaryKey();
+							  
+							  if ( primaryKey != null ) {
+									updateSQL.append( "on audit.").append( primaryKey.getName() ).append(  " = orig." ).append( primaryKey.getName() );
+							  } else {
+								  logger.warn( "Table " + unit.getTableName() + " has no primary key, can not update audit table data");
+								  updateSQL = new StringBuilder();
+							  }
+						  }
+						  builder.append(  updateSQL );
                     break;
                 case alterTable:
-                    builder.append("ALTER TABLE ").append(schema).append(unit.tableName).append(System.lineSeparator());
+                    builder.append("ALTER TABLE ").append(schema).append(unit.getAuditTableName()).append(System.lineSeparator());
                     break;
                 case addColumn:
                     if (!firstCol){
@@ -828,6 +845,16 @@ class GenericDMR implements DataSourceDMR {
                     }
                     else {
                         builder.append(unit.columnName).append(" ").append(unit.typeName);
+			
+								if ( firstUpdateCol ) {
+									firstUpdateCol = false;
+									
+									updateSQL.append(";").append( System.lineSeparator() ).append( "update ").append(schema).append(unit.getAuditTableName()).append(System.lineSeparator()).append( "set ");
+									updateSQL.append( unit.getColumnName() ).append( " = orig." ).append( unit.getColumnName() );
+								} else {
+									
+									updateSQL.append(System.lineSeparator()).append( " , " ).append( unit.getColumnName() ).append( " = orig. " ).append( unit.getColumnName() );
+								}
 //                        if (dataTypeDef.create_params != null &&  unit.size > 0){
                           if (dataTypeDef.createWithSize &&  unit.size > 0){
                             builder.append(" (").append(unit.size);

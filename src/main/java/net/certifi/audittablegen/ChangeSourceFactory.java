@@ -347,7 +347,8 @@ public class ChangeSourceFactory {
 				// populate the table
 				tableChangeUnits.add( new DBChangeUnit(DBChangeType.begin) );
 				workUnit = new DBChangeUnit(DBChangeType.fillAuditTable);
-            workUnit.tableName = auditTableName;
+            workUnit.setAuditTableName( auditTableName );
+				workUnit.setTypeName( baseTableName );
             tableChangeUnits.add(workUnit);
 				
 				//   fill all columns on the base table
@@ -402,7 +403,9 @@ public class ChangeSourceFactory {
             //a temporary list, and evaluate.
             alterTableChangeUnits.add(new DBChangeUnit(DBChangeType.begin));
             workUnit = new DBChangeUnit(DBChangeType.alterTable);
-            workUnit.setTableName(auditTableName);
+            workUnit.setTableName(baseTableName);
+				workUnit.setAuditTableName( auditTableName );
+				workUnit.setTableDef( baseTableDef );
             alterTableChangeUnits.add(workUnit);
             
             //to make this a little easier, get a map for the column list
@@ -525,6 +528,7 @@ public class ChangeSourceFactory {
                     //new column
                     workUnit = new DBChangeUnit(DBChangeType.addColumn);
                     workUnit.setTableName(auditTableName);
+						  workUnit.setAuditTableName( auditTableName );
                     workUnit.setColumnName(baseColumn.getName());
                     workUnit.setTypeName(baseColumn.getTypeName());
                     workUnit.setSize(baseColumn.getSize());
@@ -534,7 +538,11 @@ public class ChangeSourceFactory {
             }
             
             //end of table
-            alterTableChangeUnits.add(new DBChangeUnit(DBChangeType.end));
+			  workUnit = new DBChangeUnit( DBChangeType.end );
+			  workUnit.setTableName( baseTableName );
+			  workUnit.setAuditTableName( auditTableName );
+			  workUnit.setTableDef( baseTableDef );
+			  alterTableChangeUnits.add( workUnit );
             
             //add the workUnits to the return value
             if (!renameColumnChangeUnits.isEmpty()){
