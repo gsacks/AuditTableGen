@@ -343,8 +343,60 @@ public class ChangeSourceFactory {
 
             //end of table
             tableChangeUnits.add(new DBChangeUnit(DBChangeType.end));
+				
+				// populate the table
+				tableChangeUnits.add( new DBChangeUnit(DBChangeType.begin) );
+				workUnit = new DBChangeUnit(DBChangeType.fillAuditTable);
+            workUnit.tableName = auditTableName;
+            tableChangeUnits.add(workUnit);
+				
+				//   fill all columns on the base table
+            for (ColumnDef baseColumn : baseTableDef.getColumns()) {
+                workUnit = new DBChangeUnit(DBChangeType.addColumn);
+                workUnit.setColumnName(baseColumn.getName());
+                workUnit.setTableName(auditTableName);
+                workUnit.setTypeName(baseColumn.getTypeName());
+                workUnit.setSize(baseColumn.getSize());
+                workUnit.setDecimalSize(baseColumn.getDecimalSize());
+                tableChangeUnits.add(workUnit);
+            }
+				
+				 //action
+        workUnit = new DBChangeUnit(DBChangeType.addTriggerAction);
+        workUnit.setColumnName(auditActionColumn);
+        workUnit.setTableName(baseTableName);
+        workUnit.setAuditTableName(auditTableName);
+        tableChangeUnits.add(workUnit);
+
+        //user
+        workUnit = new DBChangeUnit(DBChangeType.addTriggerUser);
+        workUnit.setColumnName(auditUserColumn);
+        workUnit.setTableName(baseTableName);
+        workUnit.setAuditTableName(auditTableName);
+        tableChangeUnits.add(workUnit);
+
+        //timestamp
+        workUnit = new DBChangeUnit(DBChangeType.addTriggerTimeStamp);
+        workUnit.setColumnName(auditTimeStampColumn);
+        workUnit.setTableName(baseTableName);
+        workUnit.setAuditTableName(auditTableName);
+        tableChangeUnits.add(workUnit);
+        
+        //sessionuser
+        if (!sessionUserSQL.isEmpty()) {
+            workUnit = new DBChangeUnit(DBChangeType.addTriggerSessionUser);
+            workUnit.setColumnName(sessionUserColumn);
+            workUnit.setTableName(baseTableName);
+            workUnit.setAuditTableName(auditTableName);
+            tableChangeUnits.add(workUnit);
         }
-        else {
+		  
+		  workUnit = new DBChangeUnit(DBChangeType.end);
+        workUnit.setTableName(baseTableName);
+        workUnit.setAuditTableName(auditTableName);
+        tableChangeUnits.add(workUnit);
+		  
+        }  else {
             //alter table
             //there might not be any changes, so store up any changes in 
             //a temporary list, and evaluate.

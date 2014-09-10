@@ -551,6 +551,7 @@ class GenericDMR implements DataSourceDMR {
                 case alterTable:
                 case createTriggers:
                 case dropTriggers:
+					 case fillAuditTable:
                     workListType = unit.getChangeType();
                     workList.add(unit);
                     break;
@@ -608,6 +609,9 @@ class GenericDMR implements DataSourceDMR {
                 case dropTriggers:
                     query = getDropTriggerSQL(op);
                     break;
+					 case fillAuditTable:
+                    query = getFillAuditTableSQL(op);
+                    break;
                 default:
                     //should not get here if the list is valid, unless a new changetype
                     //was added that this DMR does not know about.  If which case - fail.
@@ -626,10 +630,95 @@ class GenericDMR implements DataSourceDMR {
         }
     }
 
+    String getFillAuditTableSQL(List<DBChangeUnit> op) {
+        
+        StringBuilder builder = new StringBuilder();
+        StringBuilder select = new StringBuilder();
+		  
+        boolean firstCol = true;
+        String schema;
+        
+        if (verifiedSchema != null){
+            schema = verifiedSchema + ".";
+        }
+        else {
+            schema = "";
+        }
+
+        for (DBChangeUnit unit : op) {
+            switch (unit.changeType) {
+                case begin:
+                    //nothinig
+                    break;
+						 
+                case end:
+                    builder.append(")").append(System.lineSeparator());
+						  select.append(" from ").append(schema).append(unit.tableName).append(System.lineSeparator());
+						  builder.append(select);
+                    break;
+						 
+                case fillAuditTable:
+                    builder.append("insert into ").append(schema).append(unit.tableName).append(" (").append(System.lineSeparator());
+						  select.append("select ").append(System.lineSeparator());
+                    break;
+						 
+                case addColumn:
+				    case addTriggerAction:
+					 case addTriggerUser:
+				    case addTriggerTimeStamp:
+				    case addTriggerSessionUser:
+                    if (!firstCol){
+                        builder.append(", ");
+								select.append(", ");
+                    }
+                    else {
+                        firstCol = false;
+                    }
+
+                    builder.append(unit.columnName).append(" ");
+                    builder.append(System.lineSeparator());
+						  
+						  switch( unit.changeType ) {
+							  case addColumn:
+								  	select.append(unit.columnName).append(" ");
+									select.append(System.lineSeparator());
+									break;
+							  case addTriggerAction:
+								  	select.append("'L' ");
+									select.append(System.lineSeparator());
+									break;
+							  case addTriggerTimeStamp:
+								  	select.append("now()  ");
+									select.append(System.lineSeparator());
+									break;
+							  case addTriggerUser:
+								  	select.append("user ");
+									select.append(System.lineSeparator());
+									break;
+								case addTriggerSessionUser:
+								  	logger.error("unimplemented DBChangeUnit '{}' for fillAuditTable operation", unit.getChangeType().toString());
+                           return null;
+
+						  }
+
+                    break;
+						 
+                default:
+                    //should not get here if the list is valid, unless a new changetype
+                    //was added that this DMR does not know about.  If which case - fail.
+                    logger.error("unimplemented DBChangeUnit '{}' for fillAuditTable operation", unit.getChangeType().toString());
+                    return null;
+            }
+        }
+        
+        return builder.toString();
+        
+    }
+	 
     String getCreateTableSQL(List<DBChangeUnit> op) {
         
         StringBuilder builder = new StringBuilder();
-        StringBuilder constraints = new StringBuilder();
+        StringBuilder constraints = new StringBuilder(); 
         DataTypeDef dataTypeDef = null;
         boolean firstCol = true;
         String schema;
