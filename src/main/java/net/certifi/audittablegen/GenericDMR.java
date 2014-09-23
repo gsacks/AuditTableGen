@@ -1033,6 +1033,7 @@ class GenericDMR implements DataSourceDMR {
                     builder.append("    ELSEIF (TG_OP = 'UPDATE' ").append(updateConditional).append(System.lineSeparator());
                     builder.append(updateDetail);
                     builder.append("    END IF;").append(System.lineSeparator());
+						  builder.append("    RETURN NEW;");  // This should only happen on an update that does not update anything
                     builder.append("END").append(System.lineSeparator());
                     builder.append(triggerReference).append(" LANGUAGE plpgsql;").append(System.lineSeparator());
                     
