@@ -813,12 +813,11 @@ class GenericDMR implements DataSourceDMR {
                     builder.append(constraints);
 						  if ( firstUpdateCol != true ) {
 							  updateSQL.append(System.lineSeparator()).append( "from ").append(schema).append(unit.getTableName()).append( " orig").append(System.lineSeparator());
-							  updateSQL.append( "inner join ").append(schema).append(unit.getAuditTableName()).append(" audit" ).append(System.lineSeparator());
 							  
 							  ColumnDef primaryKey = unit.getTableDef().getPrimaryKey();
 							  
 							  if ( primaryKey != null ) {
-									updateSQL.append( "on audit.").append( primaryKey.getName() ).append(  " = orig." ).append( primaryKey.getName() );
+									updateSQL.append( "where audit.").append( primaryKey.getName() ).append(  " = orig." ).append( primaryKey.getName() );
 							  } else {
 								  logger.warn( "Table " + unit.getTableName() + " has no primary key, can not update audit table data");
 								  updateSQL = new StringBuilder();
@@ -849,11 +848,11 @@ class GenericDMR implements DataSourceDMR {
 								if ( firstUpdateCol ) {
 									firstUpdateCol = false;
 									
-									updateSQL.append(";").append( System.lineSeparator() ).append( "update ").append(schema).append(unit.getAuditTableName()).append(System.lineSeparator()).append( "set ");
+									updateSQL.append(";").append( System.lineSeparator() ).append( "update ").append(schema).append(unit.getAuditTableName()).append( " as audit").append(System.lineSeparator()).append( "set ");
 									updateSQL.append( unit.getColumnName() ).append( " = orig." ).append( unit.getColumnName() );
 								} else {
 									
-									updateSQL.append(System.lineSeparator()).append( " , " ).append( unit.getColumnName() ).append( " = orig. " ).append( unit.getColumnName() );
+									updateSQL.append(System.lineSeparator()).append( " , " ).append( unit.getColumnName() ).append( " = orig." ).append( unit.getColumnName() );
 								}
 //                        if (dataTypeDef.create_params != null &&  unit.size > 0){
                           if (dataTypeDef.createWithSize &&  unit.size > 0){
