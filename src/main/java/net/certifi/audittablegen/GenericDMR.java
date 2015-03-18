@@ -844,18 +844,9 @@ class GenericDMR implements DataSourceDMR {
                     }
                     else {
                         builder.append(unit.columnName).append(" ").append(unit.typeName);
-			
-								if ( firstUpdateCol ) {
-									firstUpdateCol = false;
-									
-									updateSQL.append(";").append( System.lineSeparator() ).append( "update ").append(schema).append(unit.getAuditTableName()).append( " as audit").append(System.lineSeparator()).append( "set ");
-									updateSQL.append( unit.getColumnName() ).append( " = orig." ).append( unit.getColumnName() );
-								} else {
-									
-									updateSQL.append(System.lineSeparator()).append( " , " ).append( unit.getColumnName() ).append( " = orig." ).append( unit.getColumnName() );
-								}
-//                        if (dataTypeDef.create_params != null &&  unit.size > 0){
-                          if (dataTypeDef.createWithSize &&  unit.size > 0){
+								
+//                      if (dataTypeDef.create_params != null &&  unit.size > 0){
+                        if (dataTypeDef.createWithSize &&  unit.size > 0){
                             builder.append(" (").append(unit.size);
                         
                             if (unit.decimalSize > 0){
@@ -863,6 +854,20 @@ class GenericDMR implements DataSourceDMR {
                             }
                             builder.append(") ");
                         }
+			
+								// don't genereate update sql for altering the audit table
+								if ( ! unit.tableName.equals( unit.auditTableName) ) {
+									if ( firstUpdateCol ) {
+										firstUpdateCol = false;
+
+										updateSQL.append(";").append( System.lineSeparator() ).append( "update ").append(schema).append(unit.getAuditTableName()).append( " as audit").append(System.lineSeparator()).append( "set ");
+										updateSQL.append( unit.getColumnName() ).append( " = orig." ).append( unit.getColumnName() );
+									} else {
+
+										updateSQL.append(System.lineSeparator()).append( " , " ).append( unit.getColumnName() ).append( " = orig." ).append( unit.getColumnName() );
+									}
+								}
+
                         if (!unit.foreignTable.isEmpty()){
                             builder.append("REFERENCES ").append(unit.foreignTable).append(" (").append(unit.columnName).append(")");
                             //constraints.append("CONSTRAINT ").append(unit.columnName).append(" REFERENCES ").append(unit.foreignTable);
@@ -1213,7 +1218,7 @@ class GenericDMR implements DataSourceDMR {
     public DataTypeDef getDataType (String typeName){
         
         Map<String, DataTypeDef> dtds = this.getDataTypes();
-        
+
         if (dtds.containsKey(typeName)){
             return dtds.get(typeName);
         }

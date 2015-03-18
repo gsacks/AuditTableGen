@@ -459,6 +459,7 @@ public class ChangeSourceFactory {
                     workUnit = new DBChangeUnit(DBChangeType.addColumn);
                     workUnit.setColumnName(sessionUserColumn);
                     workUnit.setTableName(auditTableName);
+						  workUnit.setAuditTableName( auditTableName );
                     workUnit.setTypeName(sessionUserTypeName);
                     workUnit.setSize(sessionUserDataSize);
                     workUnit.setDecimalSize(0);
