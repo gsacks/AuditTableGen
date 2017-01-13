@@ -63,5 +63,18 @@ public class TableDef {
     public void setColumns(List<ColumnDef> columns) {
         this.columns = columns;
     }
-    
+	 
+	 public ColumnDef getPrimaryKey() {
+		 
+		 for ( ColumnDef colDef : columns ) {
+			 
+			 if ( "YES".equals( colDef.sourceMeta.get( "is_autoincrement" ) ) ) {
+				 
+				 return colDef;
+			 }
+			 
+		 }
+		 
+		 return null;
+	 }
 }

@@ -95,4 +95,9 @@ public class ColumnDef {
         this.dataTypeDef = dataTypeDef;
     }
 
+	@Override
+	public String toString() {
+		return "ColumnDef{" + "name=" + name + ", typeName=" + typeName + ", sqlType=" + sqlType + ", size=" + size + ", decimalSize=" + decimalSize + ", dataTypeDef=" + dataTypeDef + ", sourceMeta=" + sourceMeta + '}';
+	}
+
 }

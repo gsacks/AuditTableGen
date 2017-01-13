@@ -133,6 +133,7 @@ public class PostgresqlDMR extends GenericDMR {
                 throw new RuntimeException("No results for DatabaseMetaData.getColumns(" + verifiedSchema + "." + tableName + ")");
             }
             while (rs.next()){
+					
                 ColumnDef columnDef = new ColumnDef();
                 Map columnMetaData = new CaseInsensitiveMap();
                 for (int i = 1; i <= metaDataColumnCount; i++){
@@ -141,14 +142,20 @@ public class PostgresqlDMR extends GenericDMR {
                 columnDef.setName(rs.getString("COLUMN_NAME"));
                 
                 String type_name = rs.getString("TYPE_NAME");
-                if ( type_name.equalsIgnoreCase("serial")){
-                    columnDef.setTypeName("int4");
-                }
-                else {
-                    columnDef.setTypeName(type_name);
-                }
+					 switch( type_name.toLowerCase() ) {
+						 case "serial":
+							 columnDef.setTypeName("int4");
+							 break;
+						 case "bigserial":
+							 columnDef.setTypeName("int8");
+							 break;
+						 default:
+							 columnDef.setTypeName(type_name);
+							 break;
+					 }
+
                 columnDef.setSqlType(rs.getInt("DATA_TYPE"));
-                columnDef.setSize(rs.getInt("COLUMN_SIZE"));
+                columnDef.setSize( Integer.MAX_VALUE == rs.getInt("COLUMN_SIZE") ? 0 :  rs.getInt("COLUMN_SIZE") );  //if a column is maxed don't specify the size
                 columnDef.setDecimalSize(rs.getInt("DECIMAL_DIGITS"));
                 columnDef.setSourceMeta(columnMetaData);
                 
@@ -159,8 +166,10 @@ public class PostgresqlDMR extends GenericDMR {
                     throw new RuntimeException("Missing DATA_TYPE definition for data type " + columnDef.getTypeName());
                 }                
                 columns.add(columnDef);
+				
             }
             
+				conn.close();
         }
         catch (SQLException e) {
             throw Throwables.propagate(e);

@@ -41,7 +41,16 @@ public class DBChangeUnit {
     int size = 0;
     int decimalSize = 0;
     Boolean identity = Boolean.FALSE;
+	 TableDef tableDef = null;
     //DataTypeDef dataTypeDef = null;
+
+	public TableDef getTableDef() {
+		return tableDef;
+	}
+
+	public void setTableDef(TableDef tableDef) {
+		this.tableDef = tableDef;
+	}
 
     public DBChangeUnit( DBChangeType changeType) {
         this.changeType = changeType;
@@ -290,6 +299,7 @@ public class DBChangeUnit {
                 case alterTable:
                 case createTriggers:
                 case dropTriggers:
+					 case fillAuditTable:
                     if (!beginTag){
                         //begin tag missing.
                         //could be implied, but treat as error condition.
@@ -312,7 +322,8 @@ public class DBChangeUnit {
                         valid = false;
                     }
                     else if (workListTag != DBChangeType.createTable
-                            && workListTag != DBChangeType.alterTable) {
+                            && workListTag != DBChangeType.alterTable
+									 && workListTag != DBChangeType.fillAuditTable ) {
                         logger.info ("improperly formed List<DBChangeType>. Unit{%s} not of valid for {%s} at element %d",
                                 unit.getChangeType().toString(), workListTag.toString(), i);
                         valid = false;
@@ -340,6 +351,18 @@ public class DBChangeUnit {
                 case fireOnInsert:
                 case fireOnUpdate:
                 case fireOnDelete:
+                    if (beginTag == false){
+                        logger.info ("improperly formed List<DBChangeType>.  Missing [begin] before element %d", i);
+                    }
+                    if (workListTag != DBChangeType.createTriggers){
+                        throw new RuntimeException ("improperly formed List<DBChangeType>. Unit{" +
+                                unit.getChangeType().toString() + "} not of valid for {"
+                                + workListTag.toString() +"}");
+                    }
+                    else {
+                        valid = validateUnit(unit, parentUnit);
+                    }
+                    break;
                 case addTriggerAction:
                 case addTriggerTimeStamp:
                 case addTriggerUser:
@@ -347,7 +370,8 @@ public class DBChangeUnit {
                     if (beginTag == false){
                         logger.info ("improperly formed List<DBChangeType>.  Missing [begin] before element %d", i);
                     }
-                    if (workListTag != DBChangeType.createTriggers){
+                    if (workListTag != DBChangeType.createTriggers 
+									 && workListTag != DBChangeType.fillAuditTable ){
                         throw new RuntimeException ("improperly formed List<DBChangeType>. Unit{" +
                                 unit.getChangeType().toString() + "} not of valid for {"
                                 + workListTag.toString() +"}");

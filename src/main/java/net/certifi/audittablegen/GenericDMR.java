@@ -405,6 +405,7 @@ class GenericDMR implements DataSourceDMR {
 
             }
 
+				conn.close();
         } catch (SQLException e) {
             throw Throwables.propagate(e);
         }
@@ -550,6 +551,7 @@ class GenericDMR implements DataSourceDMR {
                 case alterTable:
                 case createTriggers:
                 case dropTriggers:
+					 case fillAuditTable:
                     workListType = unit.getChangeType();
                     workList.add(unit);
                     break;
@@ -607,6 +609,9 @@ class GenericDMR implements DataSourceDMR {
                 case dropTriggers:
                     query = getDropTriggerSQL(op);
                     break;
+					 case fillAuditTable:
+                    query = getFillAuditTableSQL(op);
+                    break;
                 default:
                     //should not get here if the list is valid, unless a new changetype
                     //was added that this DMR does not know about.  If which case - fail.
@@ -625,10 +630,95 @@ class GenericDMR implements DataSourceDMR {
         }
     }
 
+    String getFillAuditTableSQL(List<DBChangeUnit> op) {
+        
+        StringBuilder builder = new StringBuilder();
+        StringBuilder select = new StringBuilder();
+		  
+        boolean firstCol = true;
+        String schema;
+        
+        if (verifiedSchema != null){
+            schema = verifiedSchema + ".";
+        }
+        else {
+            schema = "";
+        }
+
+        for (DBChangeUnit unit : op) {
+            switch (unit.changeType) {
+                case begin:
+                    //nothinig
+                    break;
+						 
+                case end:
+                    builder.append(")").append(System.lineSeparator());
+						  select.append(" from ").append(schema).append(unit.tableName).append(System.lineSeparator());
+						  builder.append(select);
+                    break;
+						 
+                case fillAuditTable:
+                    builder.append("insert into ").append(schema).append(unit.getAuditTableName()).append(" (").append(System.lineSeparator());
+						  select.append("select ").append(System.lineSeparator());
+                    break;
+						 
+                case addColumn:
+				    case addTriggerAction:
+					 case addTriggerUser:
+				    case addTriggerTimeStamp:
+				    case addTriggerSessionUser:
+                    if (!firstCol){
+                        builder.append(", ");
+								select.append(", ");
+                    }
+                    else {
+                        firstCol = false;
+                    }
+
+                    builder.append(unit.columnName).append(" ");
+                    builder.append(System.lineSeparator());
+						  
+						  switch( unit.changeType ) {
+							  case addColumn:
+								  	select.append(unit.columnName).append(" ");
+									select.append(System.lineSeparator());
+									break;
+							  case addTriggerAction:
+								  	select.append("'L' ");
+									select.append(System.lineSeparator());
+									break;
+							  case addTriggerTimeStamp:
+								  	select.append("now()  ");
+									select.append(System.lineSeparator());
+									break;
+							  case addTriggerUser:
+								  	select.append("user ");
+									select.append(System.lineSeparator());
+									break;
+								case addTriggerSessionUser:
+								  	logger.error("unimplemented DBChangeUnit '{}' for fillAuditTable operation", unit.getChangeType().toString());
+                           return null;
+
+						  }
+
+                    break;
+						 
+                default:
+                    //should not get here if the list is valid, unless a new changetype
+                    //was added that this DMR does not know about.  If which case - fail.
+                    logger.error("unimplemented DBChangeUnit '{}' for fillAuditTable operation", unit.getChangeType().toString());
+                    return null;
+            }
+        }
+        
+        return builder.toString();
+        
+    }
+	 
     String getCreateTableSQL(List<DBChangeUnit> op) {
         
         StringBuilder builder = new StringBuilder();
-        StringBuilder constraints = new StringBuilder();
+        StringBuilder constraints = new StringBuilder(); 
         DataTypeDef dataTypeDef = null;
         boolean firstCol = true;
         String schema;
@@ -702,6 +792,9 @@ class GenericDMR implements DataSourceDMR {
         StringBuilder constraints = new StringBuilder();
         DataTypeDef dataTypeDef = null;
         boolean firstCol = true;
+		  boolean firstUpdateCol = true;
+		  StringBuilder updateSQL = new StringBuilder();
+		  
         String schema;
         
         if (verifiedSchema != null){
@@ -718,9 +811,22 @@ class GenericDMR implements DataSourceDMR {
                     break;
                 case end:
                     builder.append(constraints);
+						  if ( firstUpdateCol != true ) {
+							  updateSQL.append(System.lineSeparator()).append( "from ").append(schema).append(unit.getTableName()).append( " orig").append(System.lineSeparator());
+							  
+							  ColumnDef primaryKey = unit.getTableDef().getPrimaryKey();
+							  
+							  if ( primaryKey != null ) {
+									updateSQL.append( "where audit.").append( primaryKey.getName() ).append(  " = orig." ).append( primaryKey.getName() );
+							  } else {
+								  logger.warn( "Table " + unit.getTableName() + " has no primary key, can not update audit table data");
+								  updateSQL = new StringBuilder();
+							  }
+						  }
+						  builder.append(  updateSQL );
                     break;
                 case alterTable:
-                    builder.append("ALTER TABLE ").append(schema).append(unit.tableName).append(System.lineSeparator());
+                    builder.append("ALTER TABLE ").append(schema).append(unit.getAuditTableName()).append(System.lineSeparator());
                     break;
                 case addColumn:
                     if (!firstCol){
@@ -738,8 +844,9 @@ class GenericDMR implements DataSourceDMR {
                     }
                     else {
                         builder.append(unit.columnName).append(" ").append(unit.typeName);
-//                        if (dataTypeDef.create_params != null &&  unit.size > 0){
-                          if (dataTypeDef.createWithSize &&  unit.size > 0){
+								
+//                      if (dataTypeDef.create_params != null &&  unit.size > 0){
+                        if (dataTypeDef.createWithSize &&  unit.size > 0){
                             builder.append(" (").append(unit.size);
                         
                             if (unit.decimalSize > 0){
@@ -747,6 +854,20 @@ class GenericDMR implements DataSourceDMR {
                             }
                             builder.append(") ");
                         }
+			
+								// don't genereate update sql for altering the audit table
+								if ( ! unit.tableName.equals( unit.auditTableName) ) {
+									if ( firstUpdateCol ) {
+										firstUpdateCol = false;
+
+										updateSQL.append(";").append( System.lineSeparator() ).append( "update ").append(schema).append(unit.getAuditTableName()).append( " as audit").append(System.lineSeparator()).append( "set ");
+										updateSQL.append( unit.getColumnName() ).append( " = orig." ).append( unit.getColumnName() );
+									} else {
+
+										updateSQL.append(System.lineSeparator()).append( " , " ).append( unit.getColumnName() ).append( " = orig." ).append( unit.getColumnName() );
+									}
+								}
+
                         if (!unit.foreignTable.isEmpty()){
                             builder.append("REFERENCES ").append(unit.foreignTable).append(" (").append(unit.columnName).append(")");
                             //constraints.append("CONSTRAINT ").append(unit.columnName).append(" REFERENCES ").append(unit.foreignTable);
@@ -843,7 +964,7 @@ class GenericDMR implements DataSourceDMR {
                     
                     //////////////////////
                     //generate the when clause for the update trigger
-                    if (columns.size() > whenColumns.size() ){
+                    if ( true /* columns.size() > whenColumns.size() */ ){
                         //some columns excluded from update
                         updateConditional.append("AND (");
                         boolean firstCol = true;
@@ -884,9 +1005,9 @@ class GenericDMR implements DataSourceDMR {
                     
                     //////////////////////
                     //generate the insert column valuues for the trigger(s)
-                    insertDetail.append("        SELECT 'insert', user, now()");
-                    updateDetail.append("        SELECT 'update', user, now()");
-                    deleteDetail.append("        SELECT 'delete', user, now()");
+                    insertDetail.append("        SELECT 'I', user, now()");
+                    updateDetail.append("        SELECT 'U', user, now()");
+                    deleteDetail.append("        SELECT 'D', user, now()");
                     if (sessionUserColumn != null){
                         insertDetail.append(", ").append(this.getSessionUserSQL());
                         updateDetail.append(", ").append(this.getSessionUserSQL());
@@ -916,6 +1037,7 @@ class GenericDMR implements DataSourceDMR {
                     builder.append("    ELSEIF (TG_OP = 'UPDATE' ").append(updateConditional).append(System.lineSeparator());
                     builder.append(updateDetail);
                     builder.append("    END IF;").append(System.lineSeparator());
+						  builder.append("    RETURN NEW;");  // This should only happen on an update that does not update anything
                     builder.append("END").append(System.lineSeparator());
                     builder.append(triggerReference).append(" LANGUAGE plpgsql;").append(System.lineSeparator());
                     
@@ -1061,6 +1183,7 @@ class GenericDMR implements DataSourceDMR {
             
         } catch (SQLException ex) {
             logger.error("Update failed...", ex);
+				throw new RuntimeException( "Error applying AuditTable SQL", ex );
         }
     }
 
@@ -1095,7 +1218,7 @@ class GenericDMR implements DataSourceDMR {
     public DataTypeDef getDataType (String typeName){
         
         Map<String, DataTypeDef> dtds = this.getDataTypes();
-        
+
         if (dtds.containsKey(typeName)){
             return dtds.get(typeName);
         }

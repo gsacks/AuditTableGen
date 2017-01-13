@@ -19,6 +19,8 @@
 package net.certifi.audittablegen;
 
 import java.util.*;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.exception.ContextedRuntimeException;
 import org.slf4j.Logger;
@@ -77,6 +79,7 @@ public class ChangeSourceFactory {
                 break;
             case iddatatype:
                 auditIdTypeName = attrib.getValue();
+					break;
             case userdatatype:      
                 auditUserTypeName = attrib.getValue();
                 break;
@@ -133,10 +136,20 @@ public class ChangeSourceFactory {
         //TODO: this is where regexp or wildcard pattern matching should go
         if (pattern.isEmpty()
                 || pattern.equals("*")
-                || pattern.toLowerCase().equals(str.toLowerCase())) {
+                || pattern.toLowerCase().equals(str.toLowerCase()) ) {
             return Boolean.TRUE;
         }
 
+		  try {
+				Pattern p = Pattern.compile( pattern, Pattern.CASE_INSENSITIVE|Pattern.UNICODE_CASE );
+				if ( p != null && p.matcher( str ).matches() ) return Boolean.TRUE;
+		  
+		  } catch( IllegalArgumentException x) {
+			  
+			  logger.warn( "Invalid Regexp " + x.getMessage() );
+		  }
+		  
+		  
         return Boolean.FALSE;
 
     }
@@ -295,7 +308,7 @@ public class ChangeSourceFactory {
             workUnit.setColumnName(auditActionColumn);
             workUnit.setTableName(auditTableName);
             workUnit.setTypeName(auditActionTypeName); //insert, update, or delete
-            workUnit.setSize(6);
+            workUnit.setSize(1);
             workUnit.setDecimalSize(0);
             tableChangeUnits.add(workUnit);
             
@@ -330,14 +343,69 @@ public class ChangeSourceFactory {
 
             //end of table
             tableChangeUnits.add(new DBChangeUnit(DBChangeType.end));
+				
+				// populate the table
+				tableChangeUnits.add( new DBChangeUnit(DBChangeType.begin) );
+				workUnit = new DBChangeUnit(DBChangeType.fillAuditTable);
+            workUnit.setAuditTableName( auditTableName );
+				workUnit.setTypeName( baseTableName );
+            tableChangeUnits.add(workUnit);
+				
+				//   fill all columns on the base table
+            for (ColumnDef baseColumn : baseTableDef.getColumns()) {
+                workUnit = new DBChangeUnit(DBChangeType.addColumn);
+                workUnit.setColumnName(baseColumn.getName());
+                workUnit.setTableName(auditTableName);
+                workUnit.setTypeName(baseColumn.getTypeName());
+                workUnit.setSize(baseColumn.getSize());
+                workUnit.setDecimalSize(baseColumn.getDecimalSize());
+                tableChangeUnits.add(workUnit);
+            }
+				
+				 //action
+        workUnit = new DBChangeUnit(DBChangeType.addTriggerAction);
+        workUnit.setColumnName(auditActionColumn);
+        workUnit.setTableName(baseTableName);
+        workUnit.setAuditTableName(auditTableName);
+        tableChangeUnits.add(workUnit);
+
+        //user
+        workUnit = new DBChangeUnit(DBChangeType.addTriggerUser);
+        workUnit.setColumnName(auditUserColumn);
+        workUnit.setTableName(baseTableName);
+        workUnit.setAuditTableName(auditTableName);
+        tableChangeUnits.add(workUnit);
+
+        //timestamp
+        workUnit = new DBChangeUnit(DBChangeType.addTriggerTimeStamp);
+        workUnit.setColumnName(auditTimeStampColumn);
+        workUnit.setTableName(baseTableName);
+        workUnit.setAuditTableName(auditTableName);
+        tableChangeUnits.add(workUnit);
+        
+        //sessionuser
+        if (!sessionUserSQL.isEmpty()) {
+            workUnit = new DBChangeUnit(DBChangeType.addTriggerSessionUser);
+            workUnit.setColumnName(sessionUserColumn);
+            workUnit.setTableName(baseTableName);
+            workUnit.setAuditTableName(auditTableName);
+            tableChangeUnits.add(workUnit);
         }
-        else {
+		  
+		  workUnit = new DBChangeUnit(DBChangeType.end);
+        workUnit.setTableName(baseTableName);
+        workUnit.setAuditTableName(auditTableName);
+        tableChangeUnits.add(workUnit);
+		  
+        }  else {
             //alter table
             //there might not be any changes, so store up any changes in 
             //a temporary list, and evaluate.
             alterTableChangeUnits.add(new DBChangeUnit(DBChangeType.begin));
             workUnit = new DBChangeUnit(DBChangeType.alterTable);
-            workUnit.setTableName(auditTableName);
+            workUnit.setTableName(baseTableName);
+				workUnit.setAuditTableName( auditTableName );
+				workUnit.setTableDef( baseTableDef );
             alterTableChangeUnits.add(workUnit);
             
             //to make this a little easier, get a map for the column list
@@ -391,6 +459,7 @@ public class ChangeSourceFactory {
                     workUnit = new DBChangeUnit(DBChangeType.addColumn);
                     workUnit.setColumnName(sessionUserColumn);
                     workUnit.setTableName(auditTableName);
+						  workUnit.setAuditTableName( auditTableName );
                     workUnit.setTypeName(sessionUserTypeName);
                     workUnit.setSize(sessionUserDataSize);
                     workUnit.setDecimalSize(0);
@@ -460,6 +529,7 @@ public class ChangeSourceFactory {
                     //new column
                     workUnit = new DBChangeUnit(DBChangeType.addColumn);
                     workUnit.setTableName(auditTableName);
+						  workUnit.setAuditTableName( auditTableName );
                     workUnit.setColumnName(baseColumn.getName());
                     workUnit.setTypeName(baseColumn.getTypeName());
                     workUnit.setSize(baseColumn.getSize());
@@ -469,7 +539,11 @@ public class ChangeSourceFactory {
             }
             
             //end of table
-            alterTableChangeUnits.add(new DBChangeUnit(DBChangeType.end));
+			  workUnit = new DBChangeUnit( DBChangeType.end );
+			  workUnit.setTableName( baseTableName );
+			  workUnit.setAuditTableName( auditTableName );
+			  workUnit.setTableDef( baseTableDef );
+			  alterTableChangeUnits.add( workUnit );
             
             //add the workUnits to the return value
             if (!renameColumnChangeUnits.isEmpty()){
